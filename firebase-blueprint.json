@@ -1,0 +1,233 @@
+{
+  "entities": {
+    "SupportAction": {
+      "title": "SupportAction",
+      "description": "A support contribution from a user",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the supporter" },
+        "phone": { "type": "string", "description": "Phone number of the supporter" },
+        "amount": { "type": "number", "description": "Amount in MNT" },
+        "message": { "type": "string", "description": "Message to the recipient" },
+        "tier": { "type": "string", "enum": ["starter", "star", "special", "super", "sponsor", "subscription"], "description": "The support tier selected" },
+        "isSubscription": { "type": "boolean", "description": "Whether this is a monthly subscription" },
+        "age": { "type": "number" },
+        "businessInfo": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the support was given" }
+      },
+      "required": ["name", "amount", "tier", "timestamp"]
+    },
+    "Stats": {
+      "title": "Stats",
+      "description": "Aggregated statistics for support",
+      "type": "object",
+      "properties": {
+        "totalAmount": { "type": "number" },
+        "totalSupporters": { "type": "number" },
+        "totalSupported": { "type": "number" },
+        "totalSubscribers": { "type": "number" },
+        "tierCounts": {
+          "type": "object",
+          "properties": {
+            "starter": { "type": "number" },
+            "star": { "type": "number" },
+            "special": { "type": "number" },
+            "super": { "type": "number" },
+            "sponsor": { "type": "number" },
+            "subscription": { "type": "number" },
+            "custom": { "type": "number" }
+          }
+        },
+        "profileImageUrl": { "type": "string" },
+        "coverImageUrl": { "type": "string" }
+      }
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A task or project request from the community",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "description": { "type": "string" },
+        "supportAmount": { "type": "number" },
+        "likes": { "type": "number" },
+        "dislikes": { "type": "number" },
+        "superSupportTotal": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "in-progress", "completed"] },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "description", "supportAmount", "timestamp"]
+    },
+    "TeamCandidate": {
+      "title": "TeamCandidate",
+      "description": "A candidate for the professional team",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "profession": { "type": "string" },
+        "description": { "type": "string" },
+        "votes": { "type": "number" },
+        "isTeamMember": { "type": "boolean" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "profession", "description", "timestamp"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A post/message in a task discussion",
+      "type": "object",
+      "properties": {
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "likes": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderName", "text", "timestamp", "likes"]
+    },
+    "HelpRequest": {
+      "title": "HelpRequest",
+      "description": "A request for help from the community",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "content": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "content", "amount", "timestamp"]
+    },
+    "Suggestion": {
+      "title": "Suggestion",
+      "description": "A suggestion or feedback from a user",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "content": { "type": "string" },
+        "amount": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "phone", "content", "amount", "timestamp"]
+    },
+    "AppEntry": {
+      "title": "AppEntry",
+      "description": "An application or project in the My Apps list",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "link": { "type": "string" },
+        "description": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "logoUrl", "link", "description", "timestamp"]
+    },
+    "CRARating": {
+      "title": "CRARating",
+      "description": "A community rating",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["free", "paid"] },
+        "rating": { "type": "number", "minimum": 1, "maximum": 100 },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "rating", "timestamp"]
+    },
+    "CRCReport": {
+      "title": "CRCReport",
+      "description": "A community report credit action",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["good", "bad"] },
+        "reason": { "type": "string" },
+        "credit": { "type": "number" },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "reason", "credit", "timestamp"]
+    },
+    "CTRRating": {
+      "title": "CTRRating",
+      "description": "A community trust rating",
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "enum": ["free", "paid"] },
+        "rating": { "type": "number", "minimum": 1, "maximum": 100 },
+        "userName": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "rating", "timestamp"]
+    },
+    "BiographyEntry": {
+      "title": "BiographyEntry",
+      "description": "A project or work entry in the biography",
+      "type": "object",
+      "properties": {
+        "projectName": { "type": "string" },
+        "totalCost": { "type": "number" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "peopleInvolved": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectName", "totalCost", "description", "peopleInvolved", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/supports/{supportId}": {
+      "schema": "SupportAction",
+      "description": "Collection of all support actions"
+    },
+    "/stats/global": {
+      "schema": "Stats",
+      "description": "Global statistics for the support page"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of community tasks"
+    },
+    "/tasks/{taskId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Chat messages for a specific task"
+    },
+    "/team_candidates/{candidateId}": {
+      "schema": "TeamCandidate",
+      "description": "Collection of team candidates"
+    },
+    "/help_requests/{requestId}": {
+      "schema": "HelpRequest",
+      "description": "Collection of help requests"
+    },
+    "/suggestions/{suggestionId}": {
+      "schema": "Suggestion",
+      "description": "Collection of suggestions"
+    },
+    "/apps/{appId}": {
+      "schema": "AppEntry",
+      "description": "Collection of applications"
+    },
+    "/cra_ratings/{ratingId}": {
+      "schema": "CRARating",
+      "description": "Collection of community ratings"
+    },
+    "/crc_reports/{reportId}": {
+      "schema": "CRCReport",
+      "description": "Collection of community report credits"
+    },
+    "/ctr_ratings/{ratingId}": {
+      "schema": "CTRRating",
+      "description": "Collection of community trust ratings"
+    },
+    "/biography_entries/{entryId}": {
+      "schema": "BiographyEntry",
+      "description": "Collection of biography entries"
+    }
+  }
+}

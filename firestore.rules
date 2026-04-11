@@ -1,0 +1,213 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: supports
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - phone: string (optional, 0-20 chars)
+    //   - amount: number (required, positive)
+    //   - message: string (optional, 0-500 chars)
+    //   - tier: string (required, enum: starter, star, special, super, sponsor, subscription, custom)
+    //   - isSubscription: boolean (optional)
+    //   - age: number (optional)
+    //   - businessInfo: string (optional)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: stats
+    // Document ID: global
+    // Fields:
+    //   - totalAmount: number
+    //   - totalSupporters: number
+    //   - totalSupported: number
+    //   - totalSubscribers: number
+    //   - totalHelpRequests: number
+    //   - totalSuggestions: number
+    //   - profileImageUrl: string
+    //   - coverImageUrl: string
+    //   - tierCounts: map (keys: starter, star, special, super, sponsor, subscription, custom)
+    //
+    // Collection: help_requests
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string
+    //   - phone: string
+    //   - content: string
+    //   - amount: number
+    //   - timestamp: timestamp
+    //
+    // Collection: suggestions
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string
+    //   - phone: string
+    //   - content: string
+    //   - amount: number
+    //   - timestamp: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidSupport(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 20)) &&
+             data.amount is number && data.amount >= 0 &&
+             (!('message' in data) || (data.message is string && data.message.size() <= 500)) &&
+             data.tier in ['starter', 'star', 'special', 'super', 'sponsor', 'subscription', 'custom'] &&
+             (!('isSubscription' in data) || data.isSubscription is bool) &&
+             (!('age' in data) || data.age is number) &&
+             (!('businessInfo' in data) || data.businessInfo is string) &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidHelpRequest(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.amount is number && data.amount >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidSuggestion(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() > 0 && data.phone.size() <= 20 &&
+             data.content is string && data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.amount is number && data.amount >= 0 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidApp(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+             data.type is string && data.type.size() > 0 && data.type.size() <= 50 &&
+             data.logoUrl is string && data.logoUrl.size() > 0 &&
+             data.link is string && data.link.size() > 0 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidCRARating(data) {
+      return data.type in ['free', 'paid'] &&
+             data.rating is number && data.rating >= 1 && data.rating <= 100 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidCRCReport(data) {
+      return data.type in ['good', 'bad'] &&
+             data.reason is string && data.reason.size() > 0 &&
+             data.credit is number &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidCTRRating(data) {
+      return data.type in ['free', 'paid'] &&
+             data.rating is number && data.rating >= 1 && data.rating <= 100 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidBiographyEntry(data) {
+      return data.projectName is string && data.projectName.size() > 0 && data.projectName.size() <= 200 &&
+             data.totalCost is number && data.totalCost >= 0 &&
+             data.description is string && data.description.size() > 0 && data.description.size() <= 5000 &&
+             (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000)) &&
+             data.peopleInvolved is string && data.peopleInvolved.size() > 0 && data.peopleInvolved.size() <= 1000 &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /supports/{supportId} {
+      // Publicly readable so everyone can see the support list
+      allow read: if true;
+      // Anyone can create a support action (no auth required for this specific app request)
+      allow create: if isValidSupport(request.resource.data);
+      // No updates or deletes allowed for integrity
+      allow update, delete: if false;
+    }
+
+    match /stats/global {
+      // Publicly readable for the dashboard
+      allow read: if true;
+      // Only the system (or admin) should update stats, but for this demo 
+      // we might need to allow increments if done client-side.
+      // Ideally this would be a Cloud Function, but we'll allow atomic updates for the demo.
+      allow write: if true; 
+    }
+
+    match /tasks/{taskId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['likes', 'dislikes', 'superSupportTotal', 'status', 'imageUrl', 'takenBy']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if true;
+        allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      }
+    }
+
+    match /team_candidates/{candidateId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['votes', 'isTeamMember']);
+      allow delete: if false;
+    }
+
+    match /help_requests/{requestId} {
+      allow read: if true;
+      allow create: if isValidHelpRequest(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /suggestions/{suggestionId} {
+      allow read: if true;
+      allow create: if isValidSuggestion(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /apps/{appId} {
+      allow read: if true;
+      allow create: if isValidApp(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /cra_ratings/{ratingId} {
+      allow read: if true;
+      allow create: if isValidCRARating(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /crc_reports/{reportId} {
+      allow read: if true;
+      allow create: if isValidCRCReport(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /ctr_ratings/{ratingId} {
+      allow read: if true;
+      allow create: if isValidCTRRating(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /biography_entries/{entryId} {
+      allow read: if true;
+      allow create: if isValidBiographyEntry(request.resource.data);
+      allow update, delete: if false;
+    }
+  }
+}
