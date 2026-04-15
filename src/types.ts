@@ -1,6 +1,6 @@
 export type SupportTier = 'starter' | 'star' | 'special' | 'super' | 'sponsor' | 'subscription' | 'custom';
 
-export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy';
+export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy' | 'birthday';
 
 export interface Lottery {
   id: string;
@@ -32,6 +32,9 @@ export interface SupportAction {
   isSubscription?: boolean;
   age?: number;
   businessInfo?: string;
+  uniqueKey?: string;
+  totalAmount?: number;
+  supportCount?: number;
 }
 
 export interface Task {
@@ -124,6 +127,26 @@ export interface CTRRating {
   rating: number; // 1-100
   timestamp: any;
   userName?: string;
+}
+
+export interface CompletedWebsite {
+  id: string;
+  name: string;
+  shopUrl: string;
+  clientName: string;
+  record: string;
+  imageUrl: string;
+  timestamp: any;
+}
+
+export interface BirthdayEntry {
+  id: string;
+  name: string;
+  phone: string;
+  birthDate: string;
+  isPaid: boolean;
+  hasReceivedGift?: boolean;
+  timestamp: any;
 }
 
 export interface BiographyEntry {
