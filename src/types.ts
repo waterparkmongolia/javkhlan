@@ -1,6 +1,6 @@
 export type SupportTier = 'starter' | 'star' | 'special' | 'super' | 'sponsor' | 'subscription' | 'custom';
 
-export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy' | 'birthday';
+export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy' | 'birthday' | 'friends';
 
 export interface Lottery {
   id: string;

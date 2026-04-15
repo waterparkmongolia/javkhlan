@@ -1619,6 +1619,20 @@ export default function App() {
   const [ikajakiGuestName, setIkajakiGuestName] = useState('');
   const [ikajakiGuestPhone, setIkajakiGuestPhone] = useState('');
   const [isSubmittingIkajaki, setIsSubmittingIkajaki] = useState(false);
+  // Г. Жавхлан (Pro) page (home page 3)
+  const [proStats, setProStats] = useState<Stats>({
+    totalAmount: 0, totalSupporters: 0, totalSupported: 0, totalSubscribers: 0,
+    tierCounts: { starter: 0, star: 0, special: 0, super: 0, sponsor: 0, subscription: 0 },
+    profileImageUrl: '', coverImageUrl: ''
+  });
+  const [proSupports, setProSupports] = useState<SupportAction[]>([]);
+  const [showProSupport, setShowProSupport] = useState(false);
+  const [proSupportTier, setProSupportTier] = useState<SupportTier>('starter');
+  const [proGuestName, setProGuestName] = useState('');
+  const [proGuestPhone, setProGuestPhone] = useState('');
+  const [isSubmittingPro, setIsSubmittingPro] = useState(false);
+  const [isUpdatingProProfile, setIsUpdatingProProfile] = useState(false);
+  const [isUpdatingProCover, setIsUpdatingProCover] = useState(false);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [allApps, setAllApps] = useState<AppEntry[]>([]);
   const [teamCandidates, setTeamCandidates] = useState<TeamCandidate[]>([]);
@@ -2417,6 +2431,35 @@ export default function App() {
       setIkajakiSupports(s);
     }, () => {});
 
+    // Listen for Г. Жавхлан (Pro) stats
+    const unsubscribeProStats = onSnapshot(doc(db, 'pro_stats', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        const d = snapshot.data();
+        setProStats({
+          totalAmount: d.totalAmount || 0,
+          totalSupporters: d.totalSupporters || 0,
+          totalSupported: d.totalSupported || 0,
+          totalSubscribers: d.totalSubscribers || 0,
+          tierCounts: {
+            starter: d.tierCounts?.starter || 0,
+            star: d.tierCounts?.star || 0,
+            special: d.tierCounts?.special || 0,
+            super: d.tierCounts?.super || 0,
+            sponsor: d.tierCounts?.sponsor || 0,
+            subscription: d.tierCounts?.subscription || 0,
+          },
+          profileImageUrl: d.profileImageUrl || '',
+          coverImageUrl: d.coverImageUrl || '',
+        });
+      }
+    }, () => {});
+
+    // Listen for Г. Жавхлан (Pro) supports
+    const qPro = query(collection(db, 'pro_supports'), orderBy('timestamp', 'desc'), limit(100));
+    const unsubscribeProSupports = onSnapshot(qPro, (snapshot) => {
+      setProSupports(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SupportAction)));
+    }, () => {});
+
     return () => {
       unsubscribeStats();
       unsubscribeSupports();
@@ -2424,6 +2467,8 @@ export default function App() {
       unsubscribeTeam();
       unsubscribeIkajakiStats();
       unsubscribeIkajakiSupports();
+      unsubscribeProStats();
+      unsubscribeProSupports();
     };
   }, []);
 
@@ -2786,6 +2831,39 @@ export default function App() {
       setOnPaymentSuccess(() => process);
     } catch (err) { console.error(err); }
     finally { setIsSubmittingIkajaki(false); }
+  };
+
+  const handleProSupport = async () => {
+    const tier = proSupportTier;
+    const amount = TIER_CONFIG[tier].amount;
+    const supportName = appUser ? appUser.name : proGuestName.trim();
+    const supportPhone = appUser ? (appUser.phone || appUser.username || '') : proGuestPhone.trim();
+    if (!supportName) { alert('Нэрээ оруулна уу.'); return; }
+    const process = async () => {
+      setIsSubmittingPro(true);
+      try {
+        if (!auth.currentUser) await signInAnonymously(auth);
+        await addDoc(collection(db, 'pro_supports'), {
+          name: supportName, phone: supportPhone, amount, tier, timestamp: serverTimestamp(),
+        });
+        await setDoc(doc(db, 'pro_stats', 'global'), {
+          totalAmount: increment(amount), totalSupporters: increment(1),
+          [`tierCounts.${tier}`]: increment(1),
+        }, { merge: true });
+        setShowProSupport(false);
+        setProGuestName(''); setProGuestPhone('');
+      } catch (err) { console.error(err); }
+      finally { setIsSubmittingPro(false); }
+    };
+    try {
+      setIsSubmittingPro(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount, description: `Г. Жавхлан (Pro) дэмжих: ${supportName} - ${TIER_CONFIG[tier].label}`
+      });
+      setQpayInvoice({ ...response.data, amount });
+      setOnPaymentSuccess(() => process);
+    } catch (err) { console.error(err); }
+    finally { setIsSubmittingPro(false); }
   };
 
   const handleProfileQuickSupport = async () => {
@@ -4662,6 +4740,9 @@ export default function App() {
           "flex-grow scrollbar-hide",
           activeTab === 'lucky_draw' ? "overflow-hidden" : "overflow-y-auto"
         )}
+        onDoubleClick={() => {
+          if (activeTab === 'home') setShowPageSelector(true);
+        }}
       >
         {activeTab === 'home' && homePageIndex === 1 && (
           <>
@@ -4861,6 +4942,114 @@ export default function App() {
           </>
         )}
 
+        {/* ── Г. Жавхлан (Pro) Page (home page 3) ── */}
+        {activeTab === 'home' && homePageIndex === 3 && (
+          <>
+            {/* Cover */}
+            <section className="relative h-64 md:h-80 overflow-hidden group">
+              <div className="w-full h-full" style={{ background: proStats.coverImageUrl ? undefined : 'linear-gradient(135deg, #78350f 0%, #b45309 40%, #d97706 70%, #f59e0b 100%)' }}>
+                {proStats.coverImageUrl && <img src={proStats.coverImageUrl} alt="Cover" className="w-full h-full object-cover" referrerPolicy="no-referrer" />}
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                <span className="text-white text-[120px] font-black tracking-widest select-none">PRO</span>
+              </div>
+            </section>
+
+            {/* Profile */}
+            <section className="max-w-5xl mx-auto px-6 -mt-28 relative z-10">
+              <div className="flex flex-col items-center text-center gap-6 mb-12">
+                <div className="w-36 h-36 md:w-48 md:h-48 rounded-[2.5rem] border-8 border-white overflow-hidden shadow-2xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center">
+                  {proStats.profileImageUrl ? (
+                    <img src={proStats.profileImageUrl} alt="Pro Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-white font-black text-5xl">Г.Ж</span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <h1 className="font-display font-bold text-4xl md:text-6xl text-slate-900 tracking-tight cursor-pointer select-none">Г. Жавхлан <span className="text-amber-500">(Pro)</span></h1>
+                  <p className="text-amber-600 font-bold text-lg md:text-xl">@javkhlan.pro</p>
+                </div>
+
+                <div className="flex flex-wrap justify-center gap-12 md:gap-24 py-4">
+                  <div className="flex flex-col items-center">
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(proStats.totalSupporters)}</span>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supporters</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(proStats.totalAmount)}</span>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supports</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => setShowProSupport(true)}
+                    className="px-10 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-2 group hover:-translate-y-1 text-white"
+                    style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}
+                  >
+                    <Heart className="group-hover:scale-110 transition-transform" />
+                    Дэмжих
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('shop')}
+                    className="px-10 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-2 group bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:-translate-y-1"
+                  >
+                    <ShoppingBag className="group-hover:scale-110 transition-transform" />
+                    Дэлгүүр
+                  </button>
+                </div>
+
+                {/* Support tier panel */}
+                <AnimatePresence>
+                  {showProSupport && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="w-full max-w-md bg-white rounded-3xl border border-slate-100 shadow-xl p-6 space-y-4 text-left"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="font-black text-slate-900">Дэмжих хэмжээ сонгох</p>
+                        <button onClick={() => setShowProSupport(false)} className="p-1.5 hover:bg-slate-100 rounded-full"><X size={16} className="text-slate-400" /></button>
+                      </div>
+                      {!appUser && (
+                        <div className="space-y-2">
+                          <input className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Нэр" value={proGuestName} onChange={e => setProGuestName(e.target.value)} />
+                          <input className="w-full px-4 py-3 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Утасны дугаар" value={proGuestPhone} onChange={e => setProGuestPhone(e.target.value)} />
+                        </div>
+                      )}
+                      {appUser && (
+                        <div className="flex items-center gap-2 bg-amber-50 rounded-2xl px-4 py-2">
+                          <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-white text-xs font-bold">{appUser.name?.[0]}</div>
+                          <span className="text-sm font-bold text-amber-700">{appUser.name}</span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['starter','star','special','super','sponsor'] as SupportTier[]).map(tier => (
+                          <button key={tier} onClick={() => setProSupportTier(tier)}
+                            className={cn('py-3 rounded-2xl text-sm font-bold transition-all border',
+                              proSupportTier === tier ? 'text-white border-amber-500 shadow-md' : 'bg-slate-50 text-slate-600 border-slate-100 hover:border-amber-200')}
+                            style={proSupportTier === tier ? { background: 'linear-gradient(135deg,#d97706,#b45309)' } : {}}>
+                            <p>{TIER_CONFIG[tier].label}</p>
+                            <p className={proSupportTier === tier ? 'text-white/80 text-[10px]' : 'text-slate-400 text-[10px]'}>{formatCurrency(TIER_CONFIG[tier].amount)}</p>
+                          </button>
+                        ))}
+                      </div>
+                      <button onClick={handleProSupport} disabled={isSubmittingPro}
+                        className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-50"
+                        style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
+                        {isSubmittingPro ? 'Уншиж байна...' : `${formatCurrency(TIER_CONFIG[proSupportTier].amount)} Дэмжих`}
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </section>
+          </>
+        )}
+
         {/* Tab Content */}
         <div className={cn("max-w-5xl mx-auto px-6 pb-24", activeTab === 'home' ? "mt-8" : "pt-12")}>
             {activeTab === 'home' && homePageIndex === 2 && (
@@ -4887,6 +5076,40 @@ export default function App() {
                         <div className="flex justify-between items-start mb-1">
                           <h4 className="font-bold text-slate-900">{support.name}</h4>
                           <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            )}
+            {activeTab === 'home' && homePageIndex === 3 && (
+              <div className="space-y-4">
+                <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                  <TrendingUp className="text-amber-500" />
+                  Сүүлийн дэмжлэгүүд
+                </h2>
+                {proSupports.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="text-slate-300" />
+                    </div>
+                    <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
+                  </div>
+                ) : (
+                  proSupports.map((support) => (
+                    <motion.div key={support.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                      className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4">
+                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-amber-500')}>
+                        <User size={24} />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="font-bold text-slate-900">{support.name}</h4>
+                          <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
                         </div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                           {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
@@ -10679,6 +10902,18 @@ export default function App() {
                         <p className="text-xs text-slate-400 font-bold">@ikajaki</p>
                       </div>
                       {homePageIndex === 2 && <div className="ml-auto w-2.5 h-2.5 rounded-full bg-purple-600" />}
+                    </button>
+                    <button onClick={() => { setHomePageIndex(3); setShowPageSelector(false); }}
+                      className={cn("w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
+                        homePageIndex === 3 ? 'border-amber-500 bg-amber-50' : 'border-slate-100 hover:border-slate-200 bg-slate-50')}>
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
+                        <span className="text-white font-black text-xs">PRO</span>
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-900">Г. Жавхлан <span className="text-amber-500">(Pro)</span></p>
+                        <p className="text-xs text-slate-400 font-bold">@javkhlan.pro</p>
+                      </div>
+                      {homePageIndex === 3 && <div className="ml-auto w-2.5 h-2.5 rounded-full bg-amber-500" />}
                     </button>
                   </div>
                 </div>
