@@ -129,12 +129,10 @@ service cloud.firestore {
     // ===============================================================
 
     match /supports/{supportId} {
-      // Publicly readable so everyone can see the support list
       allow read: if true;
-      // Anyone can create a support action (no auth required for this specific app request)
       allow create: if isValidSupport(request.resource.data);
-      // No updates or deletes allowed for integrity
-      allow update, delete: if false;
+      allow update: if false;
+      allow delete: if true;
     }
 
     match /stats/global {
@@ -151,7 +149,7 @@ service cloud.firestore {
       allow create: if true;
       allow update: if request.resource.data.diff(resource.data).affectedKeys()
         .hasOnly(['likes', 'dislikes', 'superSupportTotal', 'status', 'imageUrl', 'takenBy']);
-      allow delete: if false;
+      allow delete: if true;
 
       match /messages/{messageId} {
         allow read: if true;
@@ -208,6 +206,129 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isValidBiographyEntry(request.resource.data);
       allow update, delete: if false;
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create, update: if true;
+    }
+
+    match /shop_requests/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /gifts/{giftId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /access_list/{docId} {
+      allow read, write: if true;
+    }
+
+    match /user_counter/{docId} {
+      allow read, write: if true;
+    }
+
+    match /user_ids/{docId} {
+      allow read, create, update: if true;
+    }
+
+    match /announcements/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /lotteries/{lotteryId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /lottery_purchases/{purchaseId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /askify_questions/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if true;
+    }
+
+    match /askify_records/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /askify_prizes/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /fish/{fishId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /fish_catches/{catchId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /fish_wishes/{wishId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /magic_words/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /user_profiles/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    match /zavgui_config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /zavgui_draws/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /lucky_draw_winners/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /lucky_draw_adjustments/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /zavgui_helpers/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
   }
 }

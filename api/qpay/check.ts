@@ -12,7 +12,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { invoice_id, is_mock } = req.body;
 
   if (is_mock) {
-    return res.json({ invoice_status: "PAID" });
+    return res.json({ rows: [{ payment_status: "PAID" }], paid_amount: 1 });
   }
 
   if (!QPAY_USERNAME || !QPAY_PASSWORD || !QPAY_API_URL) {
@@ -37,8 +37,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
-    const isPaid = checkResponse.data.paid_amount > 0 || checkResponse.data.rows?.length > 0;
-    return res.json({ invoice_status: isPaid ? "PAID" : "PENDING" });
+    const data = checkResponse.data;
+    // Normalize: always include rows array and paid_amount for client
+    const rows = data.rows || [];
+    const paid_amount = data.paid_amount || 0;
+    return res.json({ ...data, rows, paid_amount });
   } catch (error: any) {
     return res.status(500).json({ error: "Check алдаа", detail: error.response?.data || error.message });
   }

@@ -1,6 +1,15 @@
 export type SupportTier = 'starter' | 'star' | 'special' | 'super' | 'sponsor' | 'subscription' | 'custom';
 
-export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book';
+export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy';
+
+export interface Lottery {
+  id: string;
+  type: string;
+  kind: 'хожих_хүртэл' | 'насан_туршын';
+  price: number;
+  isActive: boolean;
+  timestamp: any;
+}
 
 export interface AppEntry {
   id: string;
@@ -70,6 +79,8 @@ export interface Stats {
   tierCounts: Record<SupportTier, number>;
   profileImageUrl?: string;
   coverImageUrl?: string;
+  fullName?: string;
+  username?: string;
 }
 
 export interface HelpRequest {

@@ -39,3 +39,8 @@
     scrollbar-width: none;
   }
 }
+
+@keyframes diamond-spin {
+  from { filter: hue-rotate(0deg); }
+  to   { filter: hue-rotate(360deg); }
+}

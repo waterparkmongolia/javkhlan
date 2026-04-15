@@ -10,15 +10,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { QPAY_USERNAME, QPAY_PASSWORD, QPAY_API_URL, QPAY_INVOICE_CODE } = process.env;
 
+  const { amount, description } = req.body;
+
   if (!QPAY_USERNAME || !QPAY_PASSWORD || !QPAY_API_URL || !QPAY_INVOICE_CODE) {
     return res.json({
       invoice_id: "MOCK-INV-" + Date.now(),
       qr_image: "https://picsum.photos/seed/qr/200",
       is_mock: true,
+      amount: amount || 1000,
     });
   }
-
-  const { amount, description } = req.body;
 
   let accessToken: string;
   try {

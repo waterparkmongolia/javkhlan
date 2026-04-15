@@ -1,0 +1,5347 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect, useMemo, Component } from 'react';
+import axios from 'axios';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  limit, 
+  serverTimestamp, 
+  doc, 
+  setDoc, 
+  getDoc,
+  increment,
+  getDocFromServer
+} from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { SupportTier, SupportAction, Stats, TIER_CONFIG, Task, TeamCandidate, ChatMessage, AppTab, AppEntry, CRARating, CRCReport, CTRRating, BiographyEntry } from './types';
+import { formatNumber, formatCurrency, cn } from './lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Heart, 
+  Star, 
+  Award, 
+  Zap, 
+  Crown, 
+  Users, 
+  TrendingUp, 
+  MessageSquare,
+  X,
+  ChevronRight,
+  User,
+  MoreVertical,
+  Trophy,
+  ClipboardList,
+  Home,
+  CreditCard,
+  Plus,
+  CheckCircle,
+  History,
+  ThumbsUp,
+  ThumbsDown,
+  Image as ImageIcon,
+  Upload,
+  Trash2,
+  Search,
+  Play,
+  Send,
+  Camera,
+  Phone,
+  HelpCircle,
+  MessageCircle,
+  HelpCircle as AskIcon,
+  Rocket,
+  FileText,
+  ShieldCheck,
+  Info,
+  ShieldAlert,
+  BookOpen,
+  Gift,
+  Pencil,
+  Check,
+  ShoppingBag,
+  Package,
+  MapPin,
+  Truck,
+  Loader2
+} from 'lucide-react';
+
+// --- Components ---
+
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
+    super(props);
+    (this as any).state = {
+      hasError: false,
+      error: null
+    };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    const self = this as any;
+    if (self.state.hasError) {
+      let message = "Something went wrong.";
+      try {
+        const errInfo = JSON.parse(self.state.error?.message || "");
+        if (errInfo.error) {
+          message = `Firestore Error: ${errInfo.error} during ${errInfo.operationType} on ${errInfo.path}`;
+        }
+      } catch (e) {
+        message = self.state.error?.message || message;
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+          <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-slate-100 shadow-xl text-center">
+            <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <ShieldAlert className="text-rose-600" size={32} />
+            </div>
+            <h2 className="font-display font-bold text-2xl text-slate-900 mb-4">Oops! Error</h2>
+            <p className="text-slate-600 mb-8 leading-relaxed text-sm">
+              {message}
+            </p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return self.props.children;
+  }
+}
+
+const Navbar = ({ onBrandClick, onSupportClick, onIntroClick, onShopClick }: { onBrandClick: () => void; onSupportClick: () => void; onIntroClick: () => void; onShopClick: () => void }) => (
+  <nav className="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-4">
+    <div className="max-w-5xl mx-auto flex justify-between items-center">
+      <div
+        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={onBrandClick}
+      >
+        <img src="/logo-blue.png.png" alt="Г. Жавхлан" className="w-9 h-9 object-contain rounded-lg" />
+        <span className="font-display font-bold text-xl tracking-tight">Г. Жавхлан</span>
+      </div>
+      <div className="flex items-center gap-6">
+        <button
+          onClick={onShopClick}
+          className="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors"
+        >
+          Дэлгүүр
+        </button>
+        <button
+          onClick={onIntroClick}
+          className="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors"
+        >
+          Танилцъя
+        </button>
+        <button
+          onClick={onSupportClick}
+          className="bg-brand-600 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-brand-700 transition-all shadow-lg shadow-brand-600/20"
+        >
+          Иргэд
+        </button>
+      </div>
+    </div>
+  </nav>
+);
+
+const MonnamTyping = ({ onClick }: { onClick: () => void }) => {
+  const [displayText, setDisplayText] = useState('НАМ');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150);
+
+  const words = ['НАМ', 'ГОЛ'];
+
+  useEffect(() => {
+    const handleType = () => {
+      const i = loopNum % words.length;
+      const fullText = words[i];
+
+      setDisplayText(isDeleting 
+        ? fullText.substring(0, displayText.length - 1) 
+        : fullText.substring(0, displayText.length + 1)
+      );
+
+      setTypingSpeed(isDeleting ? 100 : 150);
+
+      if (!isDeleting && displayText === fullText) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && displayText === '') {
+        setIsDeleting(false);
+        setLoopNum(loopNum + 1);
+      }
+    };
+
+    const timer = setTimeout(handleType, typingSpeed);
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, loopNum, typingSpeed]);
+
+  return (
+    <motion.div 
+      onClick={onClick}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl mb-8 cursor-pointer hover:shadow-2xl transition-all group overflow-hidden relative"
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-brand-500/10 transition-colors" />
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 flex items-center justify-center text-white shadow-lg shadow-brand-600/20">
+            <Rocket size={28} className="group-hover:animate-bounce" />
+          </div>
+          <div>
+            <h3 className="font-display font-bold text-3xl text-slate-900 flex items-center tracking-tight">
+              МОН
+              <span className="text-brand-600 ml-0.5 min-w-[3ch] inline-block">
+                {displayText}
+                <motion.span 
+                  animate={{ opacity: [1, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity }}
+                  className="inline-block w-1 h-8 bg-brand-600 ml-1 align-middle"
+                />
+              </span>
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Монгол Олны Нам</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 text-slate-300 group-hover:text-brand-600 transition-colors">
+          <span className="text-xs font-bold uppercase tracking-widest hidden sm:block">Нэвтрэх</span>
+          <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+const SplashScreen = ({ onDone }: { onDone: () => void }) => {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2800);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+      style={{ backgroundColor: '#0284c7' }}
+    >
+      {/* Logo */}
+      <motion.div
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }}
+        className="mb-6"
+      >
+        <img src="/logo-blue.png.png" alt="Logo" className="w-44 h-44 object-contain" />
+      </motion.div>
+
+      {/* Name */}
+      <motion.p
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
+        className="text-2xl font-bold tracking-widest text-white uppercase"
+        style={{ letterSpacing: '0.15em' }}
+      >
+        Г. Жавхлан
+      </motion.p>
+    </motion.div>
+  );
+};
+
+const IntroModal = ({
+  onClose,
+  onComplete
+}: { 
+  onClose: () => void; 
+  onComplete: (data: { name: string; age: number; phone: string; businessInfo: string; amount: number }) => void 
+}) => {
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState({ name: '', age: '', phone: '', businessInfo: '', amount: '' });
+
+  const steps = [
+    {
+      javkhlan: "Сайн байна уу? Намайг Ганбаатар овогтой Жавхлан гэдэг 34 настай хувиараа бизнес эрхэлдэг, Founder, CEO, Marketer, Developer Аялал Жуулчлал Менежерээр төгссөн хүн байна.",
+      userAction: <button onClick={() => setStep(1)} className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold">Сайн, сайн байна уу?</button>
+    },
+    {
+      javkhlan: "Би маш сайн. Таныг хэн гэдэг вэ, та өөрийгөө сайхан танилцуулаач.",
+      userAction: (
+        <div className="space-y-3">
+          <input 
+            type="text" 
+            placeholder="Таны нэр" 
+            value={formData.name}
+            onChange={e => setFormData({...formData, name: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500"
+          />
+          <input 
+            type="number" 
+            placeholder="Таны нас" 
+            value={formData.age}
+            onChange={e => setFormData({...formData, age: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500"
+          />
+          <button 
+            disabled={!formData.name || !formData.age}
+            onClick={() => setStep(2)} 
+            className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold disabled:opacity-50"
+          >
+            Үргэлжлүүлэх
+          </button>
+        </div>
+      )
+    },
+    {
+      javkhlan: "Сайхан нэр байна, би таньд гоё мэдээ хэлэх байх тиймээс таны дугаар надад байхгүй юм байна, та надад дугаараа өгнө үү.",
+      userAction: (
+        <div className="space-y-3">
+          <input 
+            type="tel" 
+            placeholder="Таны утасны дугаар" 
+            value={formData.phone}
+            onChange={e => setFormData({...formData, phone: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500"
+          />
+          <button 
+            disabled={!formData.phone}
+            onClick={() => setStep(3)} 
+            className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold disabled:opacity-50"
+          >
+            Үргэлжлүүлэх
+          </button>
+        </div>
+      )
+    },
+    {
+      javkhlan: "Удахгүй би таньтай холбогдноо. Нээрээ та хаана ямар бизнес эрхэлдэг талаараа болон бизнесийнхээ талаар танилцуулаач, би Askify Platform хөгжүүлж байгаа магадгүй би таны бизнесийг цааш нь олон хүнд танилцуулна хэрвээ та манай Askify Platform-ыг ашиглах бол та хэлээрэй.",
+      userAction: (
+        <div className="space-y-3">
+          <textarea 
+            placeholder="Бизнесийнхээ талаар бичнэ үү..." 
+            value={formData.businessInfo}
+            onChange={e => setFormData({...formData, businessInfo: e.target.value})}
+            rows={3}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500 resize-none"
+          />
+          <button 
+            disabled={!formData.businessInfo}
+            onClick={() => setStep(4)} 
+            className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold disabled:opacity-50"
+          >
+            Үргэлжлүүлэх
+          </button>
+        </div>
+      )
+    },
+    {
+      javkhlan: (
+        <div className="space-y-4 text-sm leading-relaxed">
+          <p className="font-bold text-lg">Сайн байна уу 🙏</p>
+          <p>Би Монголд анх удаа <strong>“Үнэлгээний Нэгдсэн Систем”</strong> платформ хөгжүүлж байна.</p>
+          <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+            <p>Энэ нь:</p>
+            <p>✔️ Хэн ч хэнийг ч үнэлдэг</p>
+            <p>✔️ Худал биш, бодит рейтинг үүсгэдэг</p>
+            <p>✔️ Итгэл дээр суурилсан шинэ орчин бий болгодог</p>
+          </div>
+          <p>Өнөөдөр бидэнд шударга үнэлгээний систем хамгийн их дутагдаж байна. Харин энэ төсөл тэр асуудлыг шийдэх зорилготой.</p>
+          <p>🚀 Энэ системийг бодит болгоход таны дэмжлэг маш чухал. Хэрвээ та энэ санааг дэмжиж байвал боломжтой хэмжээгээр хувь нэмэр оруулж дэмжээрэй 🙏</p>
+          <div className="bg-brand-50 p-4 rounded-2xl space-y-2 border border-brand-100">
+            <p className="font-bold text-brand-700">🎁 Дэмжсэн хэрэглэгчдэд:</p>
+            <ul className="list-disc list-inside text-brand-600">
+              <li>Early Access эрх</li>
+              <li>VIP Badge (платформ дээр)</li>
+              <li>Онцгой хэрэглэгч статус</li>
+            </ul>
+          </div>
+          <p className="font-medium">🚀 Та зүгээр нэг дэмжигч биш энэ системийн анхны бүтээгчдийн нэг болно.</p>
+        </div>
+      ),
+      userAction: (
+        <button 
+          onClick={() => setStep(5)} 
+          className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold shadow-lg shadow-brand-600/20"
+        >
+          Ойлголоо
+        </button>
+      )
+    },
+    {
+      javkhlan: "Та энэ төслийг дэмжиж боломжтой хэмжээгээрээ хувь нэмэр оруулна уу. Таны дэмжлэг бидэнд маш чухал.",
+      userAction: (
+        <div className="space-y-3">
+          <input 
+            type="number" 
+            placeholder="Дэмжих дүн (₮)" 
+            value={formData.amount}
+            onChange={e => setFormData({...formData, amount: e.target.value})}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-500"
+          />
+          <button 
+            onClick={() => setStep(6)} 
+            className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold"
+          >
+            {formData.amount && Number(formData.amount) > 0 ? 'Дэмжих' : 'Үргэлжлүүлэх'}
+          </button>
+        </div>
+      )
+    },
+    {
+      javkhlan: "За баярлалаа, удахгүй энэ танилцах хэсгийг илүү гоё болгоод эргээд уулзана. Одоо та манай албан ёсны хуудас руу орох гэж байна таньд амжилт хүсье.",
+      userAction: (
+        <button 
+          onClick={() => onComplete({ ...formData, age: Number(formData.age), amount: Number(formData.amount) || 0 })} 
+          className="w-full py-3 bg-brand-600 text-white rounded-xl font-bold"
+        >
+          Дуусгах
+        </button>
+      )
+    }
+  ];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+      >
+        <div className="p-6 bg-brand-600 text-white flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold">Ж</div>
+            <h3 className="font-display font-bold text-lg">Танилцъя</h3>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex-shrink-0 flex items-center justify-center text-brand-600 text-xs font-bold">Ж</div>
+            <div className="bg-slate-100 p-4 rounded-2xl rounded-tl-none">
+              <div className="text-slate-700 text-sm leading-relaxed">{steps[step].javkhlan}</div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-50">
+            {steps[step].userAction}
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const QPayModal = ({ 
+  invoice, 
+  onClose, 
+  onSuccess 
+}: { 
+  invoice: any; 
+  onClose: () => void; 
+  onSuccess: () => void 
+}) => {
+  const [status, setStatus] = useState<'pending' | 'success' | 'failed'>('pending');
+
+  useEffect(() => {
+    let interval: any;
+    if (status === 'pending') {
+      interval = setInterval(async () => {
+        try {
+          const response = await axios.post('/api/qpay/check', { invoice_id: invoice.invoice_id });
+          if ((response.data.rows && response.data.rows.length > 0) || response.data.paid_amount > 0) {
+            setStatus('success');
+            clearInterval(interval);
+            setTimeout(onSuccess, 2000);
+          }
+        } catch (error) {
+          console.error("Check payment failed:", error);
+        }
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [invoice.invoice_id, status, onSuccess]);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
+          <h3 className="font-display font-bold text-xl text-slate-900">QPay Төлбөр</h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={20} className="text-slate-400" />
+          </button>
+        </div>
+
+        <div className="flex-grow overflow-y-auto p-8 custom-scrollbar">
+          {status === 'pending' ? (
+            <div className="space-y-8 text-center">
+              <div className="space-y-4">
+                <div className="bg-slate-50 p-6 rounded-3xl inline-block border-2 border-slate-100">
+                  <img src={`data:image/png;base64,${invoice.qr_image}`} alt="QPay QR" className="w-48 h-48 mx-auto" />
+                </div>
+                <div>
+                  <p className="text-slate-500 text-sm mb-1">Төлөх дүн:</p>
+                  <p className="text-2xl font-bold text-slate-900">{formatCurrency(invoice.amount)}</p>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-brand-600 font-medium animate-pulse">
+                  <div className="w-2 h-2 bg-brand-600 rounded-full" />
+                  <span className="text-sm">Төлбөр хүлээж байна...</span>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-px flex-grow bg-slate-100"></div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Банкаа сонгох</span>
+                  <div className="h-px flex-grow bg-slate-100"></div>
+                </div>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {invoice.urls?.map((bank: any, idx: number) => (
+                    <a 
+                      key={idx}
+                      href={bank.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl border border-slate-100 hover:border-brand-200 hover:bg-brand-50/50 transition-all group"
+                    >
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-100 bg-white flex items-center justify-center p-1 group-hover:scale-110 transition-transform">
+                        <img src={bank.logo} alt={bank.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-600 text-center line-clamp-1">{bank.description}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-400 italic">Та QR кодыг уншуулах эсвэл дээрх банкны апп-уудаас сонгож төлбөрөө төлнө үү.</p>
+            </div>
+          ) : (
+            <div className="py-12 space-y-4 text-center">
+              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={40} />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900">Амжилттай!</h3>
+              <p className="text-slate-500">Төлбөр амжилттай хийгдлээ. Түр хүлээнэ үү...</p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const SupportModal = ({ 
+  tier, 
+  onClose, 
+  onSubmit 
+}: { 
+  tier: SupportTier; 
+  onClose: () => void; 
+  onSubmit: (data: { name: string; phone: string; message: string }) => void 
+}) => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [message, setMessage] = useState('');
+  const [customAmountLocal, setCustomAmountLocal] = useState('');
+  const isCustom = tier === 'custom';
+  const config = isCustom
+    ? { label: 'Дэмжлэг', amount: Number(customAmountLocal) || 0, color: 'bg-brand-600' }
+    : TIER_CONFIG[tier];
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className={cn("p-6 text-white relative", config.color)}>
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-white/20 rounded-xl">
+              {tier === 'starter' && <Heart size={24} />}
+              {tier === 'star' && <Star size={24} />}
+              {tier === 'special' && <Award size={24} />}
+              {tier === 'super' && <Zap size={24} />}
+              {tier === 'sponsor' && <Crown size={24} />}
+            </div>
+            <h3 className="font-display font-bold text-2xl">{config.label} Support</h3>
+          </div>
+          <p className="text-white/80 text-sm">Таны {formatCurrency(config.amount)} дэмжлэг маш их тус болно.</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Нэр</label>
+            <input 
+              type="text" 
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Таны нэр"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Утас</label>
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Таны утасны дугаар"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Захих Үг</label>
+            <textarea 
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              placeholder="Жишээ нь: Заавал гишүүн болоорой..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all resize-none"
+            />
+          </div>
+          
+          {isCustom && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дүн (₮)</label>
+              <input
+                type="number"
+                value={customAmountLocal}
+                onChange={e => setCustomAmountLocal(e.target.value)}
+                placeholder="Дэмжлэгийн дүн"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+              />
+            </div>
+          )}
+
+          <div className="pt-2">
+            <div className="flex justify-between items-center mb-4 px-1">
+              <span className="text-slate-500 text-sm font-medium">Дэмжлэг:</span>
+              <span className="font-bold text-slate-900">{formatCurrency(config.amount)}</span>
+            </div>
+            <button
+              onClick={() => onSubmit({ name, phone, message, ...(isCustom ? { amount: Number(customAmountLocal) } : {}) } as any)}
+              disabled={!name || (isCustom && !customAmountLocal)}
+              className={cn(
+                "w-full py-4 rounded-2xl text-white font-bold text-lg shadow-lg transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100",
+                config.color
+              )}
+            >
+              Дэмжих
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const QuickSupportModal = ({ 
+  onClose, 
+  onConfirm 
+}: { 
+  onClose: () => void; 
+  onConfirm: (data: { name: string; phone: string }) => void 
+}) => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 bg-brand-600 text-white relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <Heart size={24} />
+            </div>
+            <h3 className="font-display font-bold text-2xl">Дэмжих</h3>
+          </div>
+          <p className="text-white/80 text-sm">Мэдээллээ оруулаад дэмжиж эхэлнэ үү.</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Нэр</label>
+            <input 
+              type="text" 
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Таны нэр"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Утасны дугаар</label>
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Утасны дугаар оруулна уу"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+            />
+          </div>
+          
+          <button 
+            onClick={() => onConfirm({ name, phone })}
+            disabled={!name || !phone}
+            className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+          >
+            Дэмжиж эхлэх
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const SupportersListModal = ({ 
+  onClose, 
+  supporters 
+}: { 
+  onClose: () => void; 
+  supporters: SupportAction[] 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="font-display font-bold text-xl text-slate-900 flex items-center gap-2">
+            <Users size={20} className="text-brand-600" />
+            Нийт дэмжигчид
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={20} className="text-slate-400" />
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3">
+          {supporters.length === 0 ? (
+            <p className="text-center py-8 text-slate-400 font-medium">Одоогоор дэмжигч байхгүй байна.</p>
+          ) : (
+            supporters.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold">
+                    {s.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 flex items-center gap-1">
+                      {s.name}
+                      <CheckCircle size={14} className="text-blue-500 fill-blue-500 text-white" />
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-medium">{s.phone}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const SupportsHistoryModal = ({ 
+  onClose, 
+  history 
+}: { 
+  onClose: () => void; 
+  history: SupportAction[] 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="font-display font-bold text-xl text-slate-900 flex items-center gap-2">
+            <History size={20} className="text-brand-600" />
+            Дэмжлэгийн түүх
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X size={20} className="text-slate-400" />
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3">
+          {history.length === 0 ? (
+            <p className="text-center py-8 text-slate-400 font-medium">Түүх байхгүй байна.</p>
+          ) : (
+            history.map((s) => (
+              <div key={s.id} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold">
+                    {s.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900">{s.name}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      {s.timestamp?.toDate ? s.timestamp.toDate().toLocaleDateString() : 'Саяхан'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-brand-600">{formatCurrency(s.amount)}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{s.tier}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const SuperSupportModal = ({ 
+  onClose, 
+  onSubmit 
+}: { 
+  onClose: () => void; 
+  onSubmit: (data: { amount: number }) => void 
+}) => {
+  const [amount, setAmount] = useState('');
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 bg-amber-500 text-white relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <Zap size={24} />
+            </div>
+            <h3 className="font-display font-bold text-2xl">Super Support</h3>
+          </div>
+          <p className="text-white/80 text-sm">Дэмжлэгийн үнийн дүнгээ оруулаад мөнгө өгөх боломжтой.</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дэмжих үнийн дүн (₮)</label>
+            <input 
+              type="number" 
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="Дүн оруулна уу"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-500 outline-none"
+            />
+          </div>
+          
+          <button 
+            onClick={() => onSubmit({ amount: Number(amount) })}
+            disabled={!amount}
+            className="w-full py-4 bg-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all disabled:opacity-50"
+          >
+            Илгээх
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const SupportOthersModal = ({ 
+  onClose, 
+  onSubmit 
+}: { 
+  onClose: () => void; 
+  onSubmit: (data: { phone: string; amount: number }) => void 
+}) => {
+  const [phone, setPhone] = useState('');
+  const [amount, setAmount] = useState('');
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="p-6 bg-brand-600 text-white relative">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-white/20 rounded-xl">
+              <Heart size={24} />
+            </div>
+            <h3 className="font-display font-bold text-2xl">Бусдыг дэмжих</h3>
+          </div>
+          <p className="text-white/80 text-sm">Та бусдад тусламж үзүүлэх гэж байна.</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дэмжих хүнийхээ утасны дугаар</label>
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Утасны дугаар оруулна уу"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+            />
+            <p className="mt-1 text-[10px] text-slate-400 font-medium italic">* Тухайн хэрэглэгч манайд бүртгэлтэй байх ёстой</p>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дэмжих үнийн дүн (₮)</label>
+            <input 
+              type="number" 
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="Дүн оруулна уу"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+            />
+          </div>
+          
+          <button 
+            onClick={() => onSubmit({ phone, amount: Number(amount) })}
+            disabled={!phone || !amount}
+            className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+          >
+            Дэмжих
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// --- Helpers ---
+
+const compressImage = (file: File, maxWidth: number = 1200, maxHeight: number = 1200, quality: number = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width *= maxHeight / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+    };
+    reader.onerror = reject;
+  });
+};
+
+// --- Main App ---
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<AppTab>('home');
+  const [teamTab, setTeamTab] = useState<number>(0);
+  const [taskTab, setTaskTab] = useState<number>(0);
+  const [appsTab, setAppsTab] = useState<number>(0);
+  const [bookTab, setBookTab] = useState<number>(0); // 0: All, 1: MVP, 2: CRA, 3: CRC, 4: CTR, 5: Biography
+  const [stats, setStats] = useState<Stats>({
+    totalAmount: 0,
+    totalSupporters: 0,
+    totalSupported: 0,
+    totalSubscribers: 0,
+    tierCounts: { starter: 0, star: 0, special: 0, super: 0, sponsor: 0, subscription: 0 },
+    profileImageUrl: '',
+    coverImageUrl: ''
+  });
+  const [recentSupports, setRecentSupports] = useState<SupportAction[]>([]);
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
+  const [allApps, setAllApps] = useState<AppEntry[]>([]);
+  const [teamCandidates, setTeamCandidates] = useState<TeamCandidate[]>([]);
+  const [selectedTier, setSelectedTier] = useState<SupportTier | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [isUpdatingCover, setIsUpdatingCover] = useState(false);
+  const [showSupportOthers, setShowSupportOthers] = useState(false);
+  const [showSupportersList, setShowSupportersList] = useState(false);
+  const [showSupportsHistory, setShowSupportsHistory] = useState(false);
+  const [showQuickSupportModal, setShowQuickSupportModal] = useState(false);
+  const [showSuperModal, setShowSuperModal] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  const [showGiftModal, setShowGiftModal] = useState(false);
+  const [giftStep, setGiftStep] = useState<'intro' | 'phone' | 'revealed' | 'not-qualified' | 'support-first'>('intro');
+  const [giftPhone, setGiftPhone] = useState('');
+  const [giftPhoneError, setGiftPhoneError] = useState('');
+  const [showGiftEdit, setShowGiftEdit] = useState(false);
+  const [giftMessage, setGiftMessage] = useState("Бид танд үнэ төлбөргүй website хийж өгнө.");
+  const [giftEditValue, setGiftEditValue] = useState("");
+  const [gifts, setGifts] = useState<any[]>([]);
+  const [showGiftAddForm, setShowGiftAddForm] = useState(false);
+  const [giftForm, setGiftForm] = useState({ name: '', eligibility: 'any', customAmount: '' });
+
+  // Shop state
+  const [products, setProducts] = useState<any[]>([]);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [productForm, setProductForm] = useState({ name: '', price: '' });
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [orderType, setOrderType] = useState<'direct' | 'delivery'>('direct');
+  const [orderForm, setOrderForm] = useState({ phone: '', address: '' });
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const GIFT_MIN_AMOUNT = 1_000_000;
+  const ADMIN_EMAILS = ["iamikajaki@gmail.com", "azashigamjilt@gmail.com"];
+  const [currentUserDoc, setCurrentUserDoc] = useState<any>(null);
+  const isAdmin = ADMIN_EMAILS.includes(auth.currentUser?.email || '') || currentUserDoc?.username === 'javkhlan';
+
+  const handleGiftOpen = () => {
+    setGiftStep('intro');
+    setGiftPhone('');
+    setGiftPhoneError('');
+    setShowGiftModal(true);
+  };
+
+  const handleGiftAdd = async () => {
+    if (!giftForm.name.trim()) return;
+    const minAmount = giftForm.eligibility === 'any' ? 0
+      : giftForm.eligibility === '1m' ? 1_000_000
+      : Number(giftForm.customAmount) || 0;
+    await addDoc(collection(db, 'gifts'), {
+      name: giftForm.name.trim(),
+      eligibility: giftForm.eligibility,
+      minAmount,
+      createdAt: serverTimestamp()
+    });
+    setGiftForm({ name: '', eligibility: 'any', customAmount: '' });
+    setShowGiftAddForm(false);
+  };
+
+  const handleProductAdd = async () => {
+    if (!productForm.name.trim() || !productForm.price) return;
+    await addDoc(collection(db, 'products'), {
+      name: productForm.name.trim(),
+      price: Number(productForm.price),
+      createdAt: serverTimestamp()
+    });
+    setProductForm({ name: '', price: '' });
+    setShowProductForm(false);
+  };
+
+  const handleOrder = async () => {
+    if (!selectedProduct || !orderForm.phone) return;
+    setOrderSubmitting(true);
+    try {
+      await addDoc(collection(db, 'orders'), {
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        productPrice: selectedProduct.price,
+        orderType,
+        phone: orderForm.phone,
+        address: orderType === 'delivery' ? orderForm.address : '',
+        timestamp: serverTimestamp()
+      });
+      // Delivery бол Ask Circle-д мэдэгдэл
+      if (orderType === 'delivery') {
+        await addDoc(collection(db, 'help_requests'), {
+          name: `Захиалга: ${selectedProduct.name}`,
+          phone: orderForm.phone,
+          content: `Хүргэлтийн захиалга\nБараа: ${selectedProduct.name}\nҮнэ: ${Number(selectedProduct.price).toLocaleString()}₮\nХаяг: ${orderForm.address}`,
+          amount: 0,
+          type: 'order',
+          timestamp: serverTimestamp()
+        });
+      }
+      setSelectedProduct(null);
+      setOrderForm({ phone: '', address: '' });
+      setOrderType('direct');
+      alert(orderType === 'delivery' ? 'Захиалга амжилттай! Бид тантай удахгүй холбогдоно.' : 'Захиалга амжилттай!');
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
+  const handleGiftPhoneCheck = () => {
+    const phone = giftPhone.trim();
+    if (!phone) { setGiftPhoneError('Дугаараа оруулна уу'); return; }
+    const total = recentSupports
+      .filter(s => s.phone === phone)
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
+    // Check if any gift is eligible for this user
+    const eligible = gifts.filter(g => total >= (g.minAmount || 0));
+    if (eligible.length > 0) {
+      setGiftStep('revealed');
+    } else {
+      setGiftStep('not-qualified');
+    }
+  };
+  const [showIntro, setShowIntro] = useState(() => {
+    return !localStorage.getItem('intro_completed');
+  });
+  const [showTierMenu, setShowTierMenu] = useState(false);
+  const [qpayInvoice, setQpayInvoice] = useState<any>(null);
+  const [onPaymentSuccess, setOnPaymentSuccess] = useState<(() => void) | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [selectedCitizen, setSelectedCitizen] = useState<SupportAction | null>(null);
+
+  // Custom support form state
+  const [customAmount, setCustomAmount] = useState('');
+  const [supportForm, setSupportForm] = useState({ name: '', phone: '', message: '' });
+
+  // Task form state
+  const [taskForm, setTaskForm] = useState({ name: '', phone: '', description: '', additionalSupport: '' });
+  const [taskImage, setTaskImage] = useState<string | null>(null);
+  const [taskSupportAmount, setTaskSupportAmount] = useState<number | 'custom'>(0);
+  const [customTaskSupport, setCustomTaskSupport] = useState('');
+
+  // Team form state
+  const [teamForm, setTeamForm] = useState({ name: '', phone: '', profession: '', description: '' });
+  const [appForm, setAppForm] = useState({ name: '', type: '', link: '', description: '' });
+  const [appLogo, setAppLogo] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCandidate, setSelectedCandidate] = useState<TeamCandidate | null>(null);
+  const [activeTaskForChat, setActiveTaskForChat] = useState<Task | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatMessageInput, setChatMessageInput] = useState('');
+  const [chatImage, setChatImage] = useState<string | null>(null);
+
+  // Ask Circle state
+  const [showAskMenu, setShowAskMenu] = useState(false);
+  const [showHelpForm, setShowHelpForm] = useState(false);
+  const [showSuggestionForm, setShowSuggestionForm] = useState(false);
+  const [helpForm, setHelpForm] = useState({ name: '', phone: '', content: '' });
+  const [suggestionForm, setSuggestionForm] = useState({ name: '', phone: '', content: '' });
+  const [totalHelpRequests, setTotalHelpRequests] = useState(0);
+  const [totalSuggestions, setTotalSuggestions] = useState(0);
+  const [newNotification, setNewNotification] = useState(false);
+
+  // CRA & CRC state
+  const [allCRARatings, setAllCRARatings] = useState<CRARating[]>([]);
+  const [allCRCReports, setAllCRCReports] = useState<CRCReport[]>([]);
+  const [showCRARatingModal, setShowCRARatingModal] = useState(false);
+  const [showCRCReportModal, setShowCRCReportModal] = useState(false);
+  const [craRatingType, setCRARatingType] = useState<'free' | 'paid'>('free');
+  const [crcReportType, setCRCReportType] = useState<'good' | 'bad'>('good');
+  const [craRatingValue, setCRARatingValue] = useState(50);
+  const [crcReportReason, setCRCReportReason] = useState('');
+  const [showCRAInfo, setShowCRAInfo] = useState(false);
+  const [showCRCInfo, setShowCRCInfo] = useState(false);
+
+  // CTR state
+  const [allCTRRatings, setAllCTRRatings] = useState<CTRRating[]>([]);
+  const [showCTRRatingModal, setShowCTRRatingModal] = useState(false);
+  const [ctrRatingType, setCTRRatingType] = useState<'free' | 'paid'>('free');
+  const [ctrRatingValue, setCTRRatingValue] = useState(50);
+  const [showCTRInfo, setShowCTRInfo] = useState(false);
+
+  // Biography state
+  const [allBiographyEntries, setAllBiographyEntries] = useState<BiographyEntry[]>([]);
+  const [showBiographyForm, setShowBiographyForm] = useState(false);
+  const [biographyForm, setBiographyForm] = useState({
+    projectName: '',
+    totalCost: '',
+    description: '',
+    imageUrl: '',
+    peopleInvolved: ''
+  });
+
+  // Rating flow state
+  const [ratingStep, setRatingStep] = useState<'payment' | 'rating'>('rating');
+
+  const crcTotals = useMemo(() => {
+    const good = allCRCReports.filter(r => r.type === 'good').reduce((acc, curr) => acc + curr.credit, 0);
+    const bad = allCRCReports.filter(r => r.type === 'bad').reduce((acc, curr) => acc + curr.credit, 0);
+    return { good, bad, total: good + bad };
+  }, [allCRCReports]);
+
+  const uniqueCitizens = useMemo(() => {
+    const citizensMap = new Map<string, any>();
+    
+    recentSupports.forEach(support => {
+      // Use phone as key, but fallback to name if phone is missing
+      const key = support.phone || `no-phone-${support.name}-${support.id}`;
+      const existing = citizensMap.get(key);
+      if (existing) {
+        existing.totalAmount += support.amount;
+        existing.supportCount += 1;
+        // Keep the latest info
+        if (support.timestamp && (!existing.timestamp || support.timestamp.toMillis() > existing.timestamp.toMillis())) {
+          existing.timestamp = support.timestamp;
+          existing.name = support.name;
+          existing.businessInfo = support.businessInfo || existing.businessInfo;
+          existing.message = support.message || existing.message;
+        }
+      } else {
+        citizensMap.set(key, { 
+          ...support, 
+          uniqueKey: key,
+          totalAmount: support.amount, 
+          supportCount: 1 
+        });
+      }
+    });
+    
+    return Array.from(citizensMap.values()).sort((a, b) => {
+      const timeA = a.timestamp?.toMillis() || 0;
+      const timeB = b.timestamp?.toMillis() || 0;
+      return timeB - timeA;
+    });
+  }, [recentSupports]);
+
+  useEffect(() => {
+    // Validate connection
+    const testConnection = async () => {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
+      }
+    };
+    testConnection();
+
+    // Listen for stats
+    const unsubscribeStats = onSnapshot(doc(db, 'stats', 'global'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setStats({
+          totalAmount: data.totalAmount || 0,
+          totalSupporters: data.totalSupporters || 0,
+          totalSupported: data.totalSupported || 0,
+          totalSubscribers: data.totalSubscribers || 0,
+          tierCounts: {
+            starter: data.tierCounts?.starter || 0,
+            star: data.tierCounts?.star || 0,
+            special: data.tierCounts?.special || 0,
+            super: data.tierCounts?.super || 0,
+            sponsor: data.tierCounts?.sponsor || 0,
+            subscription: data.tierCounts?.subscription || 0,
+          },
+          profileImageUrl: data.profileImageUrl || '',
+          coverImageUrl: data.coverImageUrl || '',
+          totalHelpRequests: data.totalHelpRequests || 0,
+          totalSuggestions: data.totalSuggestions || 0
+        });
+        setTotalHelpRequests(data.totalHelpRequests || 0);
+        setTotalSuggestions(data.totalSuggestions || 0);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'stats/global'));
+
+    // Listen for recent supports
+    const q = query(collection(db, 'supports'), orderBy('timestamp', 'desc'), limit(100));
+    const unsubscribeSupports = onSnapshot(q, (snapshot) => {
+      const supports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SupportAction));
+      setRecentSupports(supports);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'supports'));
+
+    // Listen for tasks
+    const tasksQuery = query(collection(db, 'tasks'), orderBy('timestamp', 'desc'));
+    const unsubscribeTasks = onSnapshot(tasksQuery, (snapshot) => {
+      const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+      setAllTasks(tasks);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'tasks'));
+
+    // Listen for team candidates
+    const teamQuery = query(collection(db, 'team_candidates'), orderBy('votes', 'desc'));
+    const unsubscribeTeam = onSnapshot(teamQuery, (snapshot) => {
+      const candidates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TeamCandidate));
+      setTeamCandidates(candidates);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'team_candidates'));
+
+    return () => {
+      unsubscribeStats();
+      unsubscribeSupports();
+      unsubscribeTasks();
+      unsubscribeTeam();
+    };
+  }, []);
+
+  // Current user doc (for admin check)
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      if (snap.exists()) setCurrentUserDoc(snap.data());
+    }).catch(() => {});
+  }, []);
+
+  // Notification effect for Ask Circle
+  useEffect(() => {
+    const qHelp = query(collection(db, 'help_requests'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubscribeHelp = onSnapshot(qHelp, (snapshot) => {
+      if (!snapshot.empty) {
+        setNewNotification(true);
+        setTimeout(() => setNewNotification(false), 5000);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'help_requests'));
+
+    const qSug = query(collection(db, 'suggestions'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubscribeSug = onSnapshot(qSug, (snapshot) => {
+      if (!snapshot.empty) {
+        setNewNotification(true);
+        setTimeout(() => setNewNotification(false), 5000);
+      }
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'suggestions'));
+
+    const qApps = query(collection(db, 'apps'), orderBy('timestamp', 'desc'));
+    const unsubscribeApps = onSnapshot(qApps, (snapshot) => {
+      const apps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AppEntry));
+      setAllApps(apps);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'apps'));
+
+    const qCRA = query(collection(db, 'cra_ratings'), orderBy('timestamp', 'desc'));
+    const unsubscribeCRA = onSnapshot(qCRA, (snapshot) => {
+      const ratings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CRARating));
+      setAllCRARatings(ratings);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'cra_ratings'));
+
+    const qCRC = query(collection(db, 'crc_reports'), orderBy('timestamp', 'desc'));
+    const unsubscribeCRC = onSnapshot(qCRC, (snapshot) => {
+      const reports = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CRCReport));
+      setAllCRCReports(reports);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'crc_reports'));
+
+    const qCTR = query(collection(db, 'ctr_ratings'), orderBy('timestamp', 'desc'));
+    const unsubscribeCTR = onSnapshot(qCTR, (snapshot) => {
+      const ratings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CTRRating));
+      setAllCTRRatings(ratings);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'ctr_ratings'));
+
+    const qBio = query(collection(db, 'biography_entries'), orderBy('timestamp', 'desc'));
+    const unsubscribeBio = onSnapshot(qBio, (snapshot) => {
+      const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BiographyEntry));
+      setAllBiographyEntries(entries);
+    }, (error) => handleFirestoreError(error, OperationType.GET, 'biography_entries'));
+
+    const qGifts = query(collection(db, 'gifts'), orderBy('createdAt', 'desc'));
+    const unsubscribeGifts = onSnapshot(qGifts, (snapshot) => {
+      setGifts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    const qProducts = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
+    const unsubscribeProducts = onSnapshot(qProducts, (snapshot) => {
+      setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubscribeHelp();
+      unsubscribeSug();
+      unsubscribeApps();
+      unsubscribeCRA();
+      unsubscribeCRC();
+      unsubscribeCTR();
+      unsubscribeBio();
+      unsubscribeGifts();
+      unsubscribeProducts();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeTaskForChat) {
+      setChatMessages([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'tasks', activeTaskForChat.id, 'messages'),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribeMessages = onSnapshot(q, (snapshot) => {
+      const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
+      setChatMessages(messages);
+    }, (error) => handleFirestoreError(error, OperationType.GET, `tasks/${activeTaskForChat.id}/messages`));
+
+    return () => unsubscribeMessages();
+  }, [activeTaskForChat]);
+
+  const handleToggleSupport = async () => {
+    setShowQuickSupportModal(true);
+  };
+
+  const handleConfirmQuickSupport = async (data: { name: string; phone: string }) => {
+    try {
+      setIsSubmitting(true);
+      const statsRef = doc(db, 'stats', 'global');
+      
+      // Add a support record
+      await addDoc(collection(db, 'supports'), {
+        name: data.name,
+        phone: data.phone,
+        amount: 0,
+        tier: 'starter',
+        timestamp: serverTimestamp()
+      });
+
+      await setDoc(statsRef, {
+        totalSupporters: increment(1)
+      }, { merge: true });
+
+      setShowQuickSupportModal(false);
+    } catch (error) {
+      console.error("Failed to confirm support:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGiveTask = async () => {
+    const minFee = 1000000;
+
+    if (!taskForm.name || !taskForm.phone || !taskForm.description) return;
+
+    const finalSupportAmount = taskSupportAmount === 'custom' ? Number(customTaskSupport) : taskSupportAmount;
+    
+    if (finalSupportAmount < minFee) {
+      alert("Даалгавар өгөхийн тулд 1,000,000₮ ба түүнээс дээш дэмжлэг өгөх шаардлагатай.");
+      return;
+    }
+
+    const processGiveTask = async () => {
+      setIsSubmitting(true);
+      try {
+        await addDoc(collection(db, 'tasks'), {
+          name: taskForm.name,
+          phone: taskForm.phone,
+          description: taskForm.description,
+          imageUrl: taskImage,
+          supportAmount: finalSupportAmount,
+          likes: 0,
+          dislikes: 0,
+          superSupportTotal: 0,
+          status: 'pending',
+          timestamp: serverTimestamp()
+        });
+
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, {
+          totalAmount: increment(finalSupportAmount)
+        }, { merge: true });
+
+        setTaskForm({ name: '', phone: '', description: '', additionalSupport: '' });
+        setTaskImage(null);
+        setTaskSupportAmount(0);
+        setCustomTaskSupport('');
+        setTaskTab(1); // Switch to list (index 1 now)
+      } catch (error) {
+        console.error("Failed to add task:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    // Trigger QPay
+    try {
+      setIsSubmitting(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount: finalSupportAmount,
+        description: `Task Support: ${taskForm.name}`,
+        senderPhone: taskForm.phone
+      });
+      setQpayInvoice(response.data);
+      setOnPaymentSuccess(() => processGiveTask);
+    } catch (error) {
+      console.error("QPay invoice creation failed:", error);
+      alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAskHelp = async () => {
+    if (!helpForm.name || !helpForm.phone || !helpForm.content) return;
+
+    const amount = 20000;
+    
+    const processHelp = async () => {
+      setIsSubmitting(true);
+      try {
+        await addDoc(collection(db, 'help_requests'), {
+          name: helpForm.name,
+          phone: helpForm.phone,
+          content: helpForm.content,
+          amount: amount,
+          timestamp: serverTimestamp()
+        });
+
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, {
+          totalAmount: increment(amount),
+          totalHelpRequests: increment(1)
+        }, { merge: true });
+
+        setHelpForm({ name: '', phone: '', content: '' });
+        setShowHelpForm(false);
+        setShowAskMenu(false);
+      } catch (error) {
+        console.error("Failed to submit help request:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    setQpayInvoice(null);
+    try {
+      setIsSubmitting(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount: amount,
+        description: `Help Request: ${helpForm.name}`,
+        senderPhone: helpForm.phone
+      });
+      setQpayInvoice(response.data);
+      setOnPaymentSuccess(() => processHelp);
+    } catch (error) {
+      console.error("QPay Error:", error);
+      alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSendSuggestion = async () => {
+    if (!suggestionForm.name || !suggestionForm.phone || !suggestionForm.content) return;
+
+    const amount = 0;
+    
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'suggestions'), {
+        name: suggestionForm.name,
+        phone: suggestionForm.phone,
+        content: suggestionForm.content,
+        amount: amount,
+        timestamp: serverTimestamp()
+      });
+
+      const statsRef = doc(db, 'stats', 'global');
+      await setDoc(statsRef, {
+        totalSuggestions: increment(1)
+      }, { merge: true });
+
+      setSuggestionForm({ name: '', phone: '', content: '' });
+      setShowSuggestionForm(false);
+      setShowAskMenu(false);
+    } catch (error) {
+      console.error("Failed to submit suggestion:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAddApp = async () => {
+    if (!appForm.name || !appForm.type || !appForm.link || !appForm.description || !appLogo) {
+      alert("Бүх талбарыг бөглөнө үү.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'apps'), {
+        ...appForm,
+        logoUrl: appLogo,
+        timestamp: serverTimestamp()
+      });
+      setAppForm({ name: '', type: '', link: '', description: '' });
+      setAppLogo(null);
+      setAppsTab(1); // Switch to App List
+    } catch (error) {
+      console.error("Failed to add app:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGiveCRARating = async () => {
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'cra_ratings'), {
+        type: craRatingType,
+        rating: craRatingValue,
+        timestamp: serverTimestamp()
+      });
+      setShowCRARatingModal(false);
+      setRatingStep('rating'); // Reset for next time
+    } catch (error) {
+      console.error("Failed to give CRA rating:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGiveCTRRating = async () => {
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'ctr_ratings'), {
+        type: ctrRatingType,
+        rating: ctrRatingValue,
+        timestamp: serverTimestamp()
+      });
+      setShowCTRRatingModal(false);
+      setRatingStep('rating'); // Reset for next time
+    } catch (error) {
+      console.error("Failed to give CTR rating:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegisterBiography = async () => {
+    if (!biographyForm.projectName || !biographyForm.totalCost || !biographyForm.description || !biographyForm.peopleInvolved) {
+      alert("Бүх талбарыг бөглөнө үү.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'biography_entries'), {
+        projectName: biographyForm.projectName,
+        totalCost: Number(biographyForm.totalCost),
+        description: biographyForm.description,
+        imageUrl: biographyForm.imageUrl || `https://picsum.photos/seed/${biographyForm.projectName}/800/600`,
+        peopleInvolved: biographyForm.peopleInvolved,
+        timestamp: serverTimestamp()
+      });
+      setBiographyForm({
+        projectName: '',
+        totalCost: '',
+        description: '',
+        imageUrl: '',
+        peopleInvolved: ''
+      });
+      setShowBiographyForm(false);
+    } catch (error) {
+      console.error("Failed to register biography:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGiveCRCReport = async (reason: string, credit: number) => {
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'crc_reports'), {
+        type: crcReportType,
+        reason,
+        credit,
+        timestamp: serverTimestamp()
+      });
+      setShowCRCReportModal(false);
+    } catch (error) {
+      console.error("Failed to give CRC report:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 1000, 1000, 0.6);
+        setTaskImage(compressed);
+      } catch (error) {
+        console.error("Failed to compress image:", error);
+      }
+    }
+  };
+
+  const handleLikeTask = async (taskId: string) => {
+    const processLike = async () => {
+      try {
+        const taskRef = doc(db, 'tasks', taskId);
+        await setDoc(taskRef, { likes: increment(1) }, { merge: true });
+        
+        // Also update global stats for the 500₮ like
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, { totalAmount: increment(500) }, { merge: true });
+      } catch (error) {
+        console.error("Failed to like task:", error);
+      }
+    };
+
+    // Trigger QPay for Like (500₮)
+    try {
+      setIsSubmitting(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount: 500,
+        description: `Task Like: ${taskId}`,
+      });
+      setQpayInvoice(response.data);
+      setOnPaymentSuccess(() => processLike);
+    } catch (error) {
+      console.error("QPay invoice creation failed:", error);
+      alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDislikeTask = async (taskId: string) => {
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      await setDoc(taskRef, { dislikes: increment(1) }, { merge: true });
+    } catch (error) {
+      console.error("Failed to dislike task:", error);
+    }
+  };
+
+  const handleRegisterTeam = async () => {
+    if (!teamForm.name || !teamForm.phone || !teamForm.profession || !teamForm.description) return;
+
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'team_candidates'), {
+        ...teamForm,
+        votes: 0,
+        isTeamMember: false,
+        timestamp: serverTimestamp()
+      });
+      setTeamForm({ name: '', phone: '', profession: '', description: '' });
+      setTeamTab(1); // Switch to candidates list
+    } catch (error) {
+      console.error("Failed to register for team:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVoteCandidate = async (candidateId: string) => {
+    try {
+      const candidateRef = doc(db, 'team_candidates', candidateId);
+      await setDoc(candidateRef, { votes: increment(1) }, { merge: true });
+    } catch (error) {
+      console.error("Failed to vote for candidate:", error);
+    }
+  };
+
+  const handleTakeTask = async (task: Task) => {
+    try {
+      const taskRef = doc(db, 'tasks', task.id);
+      await setDoc(taskRef, { 
+        status: 'in-progress',
+        takenBy: 'Мэргэжилтэн' // In a real app, this would be the logged-in user's name
+      }, { merge: true });
+      setActiveTaskForChat(task);
+    } catch (error) {
+      console.error("Failed to take task:", error);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!activeTaskForChat || (!chatMessageInput.trim() && !chatImage)) return;
+
+    try {
+      await addDoc(collection(db, 'tasks', activeTaskForChat.id, 'messages'), {
+        senderName: 'Мэргэжилтэн', // In a real app, this would be the logged-in user's name
+        text: chatMessageInput.trim(),
+        imageUrl: chatImage,
+        likes: 0,
+        timestamp: serverTimestamp()
+      });
+      setChatMessageInput('');
+      setChatImage(null);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
+  };
+
+  const handleLikeMessage = async (messageId: string) => {
+    if (!activeTaskForChat) return;
+    try {
+      const msgRef = doc(db, 'tasks', activeTaskForChat.id, 'messages', messageId);
+      await setDoc(msgRef, { likes: increment(1) }, { merge: true });
+    } catch (error) {
+      console.error("Failed to like message:", error);
+    }
+  };
+
+  const handleChatImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 800, 800, 0.5);
+        setChatImage(compressed);
+      } catch (error) {
+        console.error("Failed to compress image:", error);
+      }
+    }
+  };
+
+  const handleProfileImageUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setIsUpdatingProfile(true);
+        const compressed = await compressImage(file, 400, 400, 0.7);
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, { profileImageUrl: compressed }, { merge: true });
+      } catch (error) {
+        console.error("Failed to update profile image:", error);
+      } finally {
+        setIsUpdatingProfile(false);
+      }
+    }
+  };
+
+  const handleCoverImageUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        setIsUpdatingCover(true);
+        const compressed = await compressImage(file, 1200, 800, 0.6);
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, { coverImageUrl: compressed }, { merge: true });
+      } catch (error) {
+        console.error("Failed to update cover image:", error);
+      } finally {
+        setIsUpdatingCover(false);
+      }
+    }
+  };
+
+  const handleSuperSupportTask = async (taskId: string, amount: number) => {
+    try {
+      const taskRef = doc(db, 'tasks', taskId);
+      await setDoc(taskRef, { superSupportTotal: increment(amount) }, { merge: true });
+      
+      const statsRef = doc(db, 'stats', 'global');
+      await setDoc(statsRef, { totalAmount: increment(amount) }, { merge: true });
+    } catch (error) {
+      console.error("Failed to super support task:", error);
+    }
+  };
+
+  const handleSupport = async (data: { name: string; phone: string; message: string, amount?: number, tier?: SupportTier }) => {
+    const tier = data.tier || selectedTier;
+    if (!tier && !data.amount) return;
+    
+    const config = tier ? TIER_CONFIG[tier] : null;
+    const finalAmount = data.amount || (config ? config.amount : 0);
+
+    const processSupport = async () => {
+      setIsSubmitting(true);
+      try {
+        // 1. Add support document
+        await addDoc(collection(db, 'supports'), {
+          name: data.name,
+          phone: data.phone,
+          message: data.message,
+          amount: finalAmount,
+          tier: tier || 'starter', // Default to starter if custom
+          isSubscription: tier === 'subscription',
+          timestamp: serverTimestamp()
+        });
+
+        // 2. Update global stats
+        const statsRef = doc(db, 'stats', 'global');
+        const updateData: any = {
+          totalAmount: increment(finalAmount),
+          totalSupporters: increment(1),
+        };
+
+        if (tier) {
+          updateData[`tierCounts.${tier}`] = increment(1);
+          if (tier === 'subscription') {
+            updateData.totalSubscribers = increment(1);
+          }
+        }
+
+        await setDoc(statsRef, updateData, { merge: true });
+
+        setSelectedTier(null);
+        setSupportForm({ name: '', phone: '', message: '' });
+        setCustomAmount('');
+        if (activeTab === 'support') setActiveTab('home');
+      } catch (error) {
+        console.error("Support failed:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    // Trigger QPay
+    try {
+      setIsSubmitting(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount: finalAmount,
+        description: `Support: ${data.name}`,
+        senderPhone: data.phone
+      });
+      setQpayInvoice(response.data);
+      setOnPaymentSuccess(() => processSupport);
+    } catch (error) {
+      console.error("QPay invoice creation failed:", error);
+      alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSuperSupport = async (data: { amount: number }) => {
+    if (!data.amount) return;
+    
+    setIsSubmitting(true);
+    try {
+      // 1. Add support document
+      await addDoc(collection(db, 'supports'), {
+        name: 'Super Supporter',
+        phone: 'Нууцлагдсан',
+        message: 'Super Support!',
+        amount: data.amount,
+        tier: 'super',
+        timestamp: serverTimestamp()
+      });
+
+      // 2. Update global stats
+      const statsRef = doc(db, 'stats', 'global');
+      await setDoc(statsRef, {
+        totalAmount: increment(data.amount),
+        totalSupporters: increment(1),
+        'tierCounts.super': increment(1)
+      }, { merge: true });
+
+      setShowSuperModal(false);
+    } catch (error) {
+      console.error("Super support failed:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSupportOthers = async (data: { phone: string; amount: number }) => {
+    if (!data.phone || !data.amount) return;
+    
+    const processSupportOthers = async () => {
+      setIsSubmitting(true);
+      try {
+        // 1. Add support document (representing supporting someone else)
+        await addDoc(collection(db, 'supports'), {
+          name: 'Г. Жавхлан', // Javkhlan is supporting someone
+          phone: data.phone,
+          amount: data.amount,
+          tier: 'custom',
+          timestamp: serverTimestamp()
+        });
+
+        // 2. Update global stats (Javkhlan's "Supported" count goes up)
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, {
+          totalAmount: increment(data.amount),
+          totalSupported: increment(1)
+        }, { merge: true });
+
+        setShowSupportOthers(false);
+        setSupportForm({ name: '', phone: '', message: '' });
+        setCustomAmount('');
+      } catch (error) {
+        console.error("Support failed:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    // Trigger QPay
+    try {
+      setIsSubmitting(true);
+      const response = await axios.post('/api/qpay/invoice', {
+        amount: data.amount,
+        description: `Support Others: ${data.phone}`,
+        senderPhone: data.phone
+      });
+      setQpayInvoice(response.data);
+      setOnPaymentSuccess(() => processSupportOthers);
+    } catch (error) {
+      console.error("QPay invoice creation failed:", error);
+      alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleIntroComplete = async (data: { name: string; age: number; phone: string; businessInfo: string; amount: number }) => {
+    setIsSubmitting(true);
+    try {
+      if (data.amount > 0) {
+        // If amount is provided, treat it as a support action
+        await handleSupport({
+          name: data.name,
+          phone: data.phone,
+          message: `Intro-гоор дэмжсэн: ${data.businessInfo}`,
+          amount: data.amount,
+          tier: 'star' // Default tier for intro support
+        });
+      } else {
+        // Just record as a starter support
+        await addDoc(collection(db, 'supports'), {
+          name: data.name,
+          phone: data.phone,
+          age: data.age,
+          businessInfo: data.businessInfo,
+          amount: 0,
+          tier: 'starter',
+          message: `Intro-гоор бүртгүүлсэн: ${data.businessInfo}`,
+          timestamp: serverTimestamp()
+        });
+
+        const statsRef = doc(db, 'stats', 'global');
+        await setDoc(statsRef, {
+          totalSupporters: increment(1)
+        }, { merge: true });
+      }
+
+      setShowIntro(false);
+      localStorage.setItem('intro_completed', 'true');
+      setActiveTab('home'); 
+    } catch (error) {
+      console.error("Intro registration failed:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <ErrorBoundary>
+      <AnimatePresence>
+        {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      </AnimatePresence>
+      <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+      <Navbar 
+        onBrandClick={() => setActiveTab('home')}
+        onSupportClick={() => setActiveTab('citizens')}
+        onIntroClick={() => setShowIntro(true)}
+        onShopClick={() => setActiveTab('shop')}
+      />
+
+      <main className="flex-grow overflow-y-auto scrollbar-hide">
+        {activeTab === 'home' && (
+          <>
+            {/* Hero / Cover Section */}
+            <section className="relative h-64 md:h-80 overflow-hidden group">
+              <img 
+                src={stats.coverImageUrl || "https://picsum.photos/seed/javkhlan-cover/1920/1080"} 
+                alt="Cover" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+              <label className="absolute bottom-4 right-6 p-3 bg-slate-900/40 backdrop-blur-md text-white rounded-2xl cursor-pointer hover:bg-slate-900/60 transition-all opacity-0 group-hover:opacity-100 border border-white/20 flex items-center justify-center min-w-[44px] min-h-[44px]">
+                {isUpdatingCover ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Camera size={20} />
+                )}
+                <input type="file" accept="image/*" onChange={handleCoverImageUpdate} className="hidden" disabled={isUpdatingCover} />
+              </label>
+            </section>
+
+            {/* Profile Section */}
+            <section className="max-w-5xl mx-auto px-6 -mt-20 relative z-10">
+              <div className="flex flex-col md:flex-row md:items-end gap-6 mb-8">
+                <div className="relative group w-fit">
+                  <div className="w-32 h-32 md:w-40 md:h-40 rounded-3xl border-4 border-white overflow-hidden shadow-xl bg-white">
+                    <img 
+                      src={stats.profileImageUrl || "https://picsum.photos/seed/javkhlan-profile/400/400"} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-3xl">
+                    {isUpdatingProfile ? (
+                      <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera size={32} className="text-white" />
+                    )}
+                    <input type="file" accept="image/*" onChange={handleProfileImageUpdate} className="hidden" disabled={isUpdatingProfile} />
+                  </label>
+                </div>
+                <div className="flex-grow pb-2">
+                  <h1 className="font-display font-bold text-3xl md:text-4xl text-slate-900 mb-1">Г. Жавхлан</h1>
+                  <p className="text-slate-500 font-medium mb-4">@javkhlan</p>
+                  
+                  <div className="flex flex-nowrap justify-center gap-3 md:justify-start md:gap-6">
+                    <div
+                      className="flex flex-col items-center bg-white/50 md:bg-transparent px-3 py-2 md:p-0 rounded-2xl md:rounded-none border border-slate-100 md:border-0 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-50/50 transition-colors"
+                      onClick={() => setShowSupportersList(true)}
+                    >
+                      <span className="font-bold text-[25px] md:text-2xl text-slate-900 whitespace-nowrap">{formatNumber(stats.totalSupporters)}</span>
+                      <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Supporters</span>
+                    </div>
+                    <div
+                      className="flex flex-col items-center bg-white/50 md:bg-transparent px-3 py-2 md:p-0 rounded-2xl md:rounded-none border border-slate-100 md:border-0 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-50/50 transition-colors"
+                      onClick={() => setShowSupportsHistory(true)}
+                    >
+                      <span className="font-bold text-[25px] md:text-2xl text-slate-900 whitespace-nowrap">{formatNumber(stats.totalAmount)}</span>
+                      <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Supports</span>
+                    </div>
+                    <div
+                      className="flex flex-col items-center bg-white/50 md:bg-transparent px-3 py-2 md:p-0 rounded-2xl md:rounded-none border border-slate-100 md:border-0 cursor-pointer hover:bg-slate-100 md:hover:bg-slate-50/50 transition-colors"
+                      onClick={() => setShowSupportOthers(true)}
+                    >
+                      <span className="font-bold text-[25px] md:text-2xl text-slate-900 whitespace-nowrap">{formatNumber(stats.totalSupported)}</span>
+                      <span className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Supported</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="md:pb-2 flex flex-row items-center gap-2 relative">
+                  <button
+                    onClick={handleToggleSupport}
+                    className="flex-grow px-6 py-4 rounded-2xl font-bold text-lg transition-all shadow-xl flex items-center justify-center gap-2 group bg-brand-600 text-white hover:bg-brand-700 shadow-brand-600/30"
+                  >
+                    <Heart className="group-hover:scale-110 transition-transform" />
+                    Дэмжих
+                  </button>
+                  {/* Gift Icon */}
+                  <motion.button
+                    whileHover={{ scale: 1.15 }}
+                    whileTap={{ scale: 0.9 }}
+                    animate={{ rotate: [0, -10, 10, -10, 10, 0] }}
+                    transition={{ repeat: Infinity, repeatDelay: 3, duration: 0.5 }}
+                    onClick={handleGiftOpen}
+                    onContextMenu={(e) => { e.preventDefault(); if (isAdmin) { setGiftEditValue(giftMessage); setShowGiftEdit(true); } }}
+                    onPointerDown={(e) => {
+                      if (!isAdmin) return;
+                      const t = setTimeout(() => { setGiftEditValue(giftMessage); setShowGiftEdit(true); }, 800);
+                      const cancel = () => clearTimeout(t);
+                      e.currentTarget.addEventListener('pointerup', cancel, { once: true });
+                      e.currentTarget.addEventListener('pointerleave', cancel, { once: true });
+                    }}
+                    className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xl shadow-amber-400/30 flex items-center justify-center relative"
+                  >
+                    <Gift size={26} />
+                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] bg-red-500 rounded-full animate-ping opacity-75" />
+                    <span className="absolute -top-2 -right-2 min-w-[22px] h-[22px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1">
+                      {gifts.length > 0 ? `+${gifts.length}` : '!'}
+                    </span>
+                  </motion.button>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* Tab Content */}
+        <div className={cn("max-w-5xl mx-auto px-6 pb-24", activeTab === 'home' ? "mt-8" : "pt-12")}>
+            {activeTab === 'home' && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                      <TrendingUp className="text-brand-600" />
+                      Сүүлийн дэмжлэгүүд
+                    </h2>
+                  </div>
+
+                  <div className="space-y-4">
+                    {recentSupports.length === 0 ? (
+                      <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Users className="text-slate-300" />
+                        </div>
+                        <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
+                      </div>
+                    ) : (
+                      recentSupports.map((support) => (
+                        <motion.div 
+                          key={support.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4"
+                        >
+                          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-slate-400')}>
+                            <User size={24} />
+                          </div>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-900">{support.name}</h4>
+                              <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">
+                                {formatCurrency(support.amount)}
+                              </span>
+                            </div>
+                            {support.message && (
+                              <div className="bg-slate-50 p-4 rounded-2xl mb-2 flex gap-3">
+                                <MessageSquare size={16} className="text-slate-400 shrink-0 mt-1" />
+                                <p className="text-slate-600 text-sm leading-relaxed italic">"{support.message}"</p>
+                              </div>
+                            )}
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="bg-brand-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-brand-400/10 rounded-full -ml-12 -mb-12 blur-2xl" />
+                    
+                    <h3 className="font-display font-bold text-2xl mb-6 relative">Нийт Дэмжлэг</h3>
+                    <div className="space-y-6 relative">
+                      <div>
+                        <p className="text-brand-300 text-xs font-bold uppercase tracking-widest mb-1">Нийт дүн</p>
+                        <p className="text-3xl font-bold">{formatCurrency(stats.totalAmount)}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-brand-300 text-xs font-bold uppercase tracking-widest mb-1">Дэмжигчид</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSupporters)}</p>
+                        </div>
+                        <div>
+                          <p className="text-brand-300 text-xs font-bold uppercase tracking-widest mb-1">Гишүүд</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSubscribers)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <h3 className="font-display font-bold text-lg text-slate-900 mb-4">Ангилал</h3>
+                    <div className="space-y-3">
+                      {(Object.keys(TIER_CONFIG) as SupportTier[]).map(tier => (
+                        <div key={tier} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", TIER_CONFIG[tier].color)} />
+                            <span className="text-sm font-medium text-slate-600">{TIER_CONFIG[tier].label}</span>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900">{stats.tierCounts[tier] || 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'team' && (
+              <div className="space-y-8 pb-20">
+                <div className="max-w-2xl mx-auto">
+                  <MonnamTyping onClick={() => setTeamTab(3)} />
+
+                  {teamTab !== 3 && (
+                    <div className="flex bg-slate-100 p-1 rounded-2xl mb-8">
+                      {['Миний баг', 'Чөлөөт хэсэг', 'Бүртгүүлэх'].map((title, i) => (
+                        <button
+                          key={title}
+                          onClick={() => setTeamTab(i)}
+                          className={cn(
+                            "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all",
+                            teamTab === i 
+                              ? "bg-white text-brand-600 shadow-sm" 
+                              : "text-slate-500 hover:text-slate-700"
+                          )}
+                        >
+                          {title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="max-w-2xl mx-auto">
+                  <AnimatePresence mode="wait">
+                    {teamTab === 0 && (
+                      <motion.div 
+                        key="my-team" 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl">
+                          <div className="flex items-center gap-3 mb-8">
+                            <div className="p-3 rounded-2xl bg-brand-600 text-white shadow-lg shadow-brand-600/20">
+                              <Users size={24} />
+                            </div>
+                            <div>
+                              <h3 className="font-display font-bold text-2xl text-slate-900">Миний баг</h3>
+                              <p className="text-sm text-slate-400 font-medium">Хамгийн шилдэг мэргэжилтнүүдийн баг</p>
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            {teamCandidates.filter(c => c.isTeamMember || c.votes > 100).length === 0 ? (
+                              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <p className="text-slate-400 text-sm">Одоогоор баг бүрдэж байна. Чөлөөт хэсгээс саналаа өгөөрэй.</p>
+                              </div>
+                            ) : (
+                              teamCandidates.filter(c => c.isTeamMember || c.votes > 100).map((member, idx) => (
+                                <div 
+                                  key={member.id} 
+                                  onClick={() => setSelectedCandidate(member)}
+                                  className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xl">
+                                      {member.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-slate-900">{member.name}</p>
+                                      <p className="text-xs text-brand-600 font-bold">{member.profession}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="flex items-center gap-1 text-amber-500">
+                                      <Star size={14} fill="currentColor" />
+                                      <span className="text-sm font-bold">Шилдэг</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {teamTab === 1 && (
+                      <motion.div 
+                        key="candidates" 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 rounded-2xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                                <Trophy size={24} />
+                              </div>
+                              <div>
+                                <h3 className="font-display font-bold text-2xl text-slate-900">Чөлөөт хэсэг</h3>
+                                <p className="text-sm text-slate-400 font-medium">Багт орохын төлөө өрсөлдөж буй мэргэжилтнүүд</p>
+                              </div>
+                            </div>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                              <input 
+                                type="text"
+                                placeholder="Хайх..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 w-full md:w-64"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-4">
+                            {teamCandidates.filter(c => 
+                              c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                              c.profession.toLowerCase().includes(searchTerm.toLowerCase())
+                            ).length === 0 ? (
+                              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <p className="text-slate-400 text-sm">Хайлтад тохирох хүн олдсонгүй.</p>
+                              </div>
+                            ) : (
+                              teamCandidates
+                                .filter(c => 
+                                  c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                  c.profession.toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                .map((candidate) => (
+                                <div 
+                                  key={candidate.id} 
+                                  onClick={() => setSelectedCandidate(candidate)}
+                                  className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                                >
+                                  <div className="flex justify-between items-start mb-4">
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-2xl group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
+                                        {candidate.name.charAt(0)}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-bold text-slate-900 text-lg">{candidate.name}</h4>
+                                        <p className="text-sm text-brand-600 font-bold uppercase tracking-wider">{candidate.profession}</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-2xl font-bold text-slate-900">{candidate.votes || 0}</p>
+                                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Санал</p>
+                                    </div>
+                                  </div>
+                                  <p className="text-slate-600 text-sm leading-relaxed mb-6 bg-slate-50 p-4 rounded-2xl italic line-clamp-2">
+                                    "{candidate.description}"
+                                  </p>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVoteCandidate(candidate.id);
+                                    }}
+                                    className="w-full py-3 bg-brand-50 text-brand-600 rounded-xl font-bold text-sm hover:bg-brand-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                                  >
+                                    <ThumbsUp size={16} />
+                                    Санал өгөх
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {teamTab === 2 && (
+                      <motion.div 
+                        key="register" 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl"
+                      >
+                        <h3 className="font-display font-bold text-2xl text-slate-900 mb-6 flex items-center gap-2">
+                          <Plus className="text-brand-600" />
+                          Багт бүртгүүлэх
+                        </h3>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Нэр</label>
+                              <input 
+                                type="text" 
+                                value={teamForm.name}
+                                onChange={e => setTeamForm({...teamForm, name: e.target.value})}
+                                placeholder="Таны нэр"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Утас</label>
+                              <input 
+                                type="tel" 
+                                value={teamForm.phone}
+                                onChange={e => setTeamForm({...teamForm, phone: e.target.value})}
+                                placeholder="Утасны дугаар"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Мэргэжил</label>
+                            <input 
+                              type="text" 
+                              value={teamForm.profession}
+                              onChange={e => setTeamForm({...teamForm, profession: e.target.value})}
+                              placeholder="Жишээ нь: Инженер, Дизайнер"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Яагаад би сонгогдох ёстой вэ?</label>
+                            <textarea 
+                              value={teamForm.description}
+                              onChange={e => setTeamForm({...teamForm, description: e.target.value})}
+                              placeholder="Өөрийн давуу тал, туршлагаа бичнэ үү..."
+                              rows={4}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none resize-none"
+                            />
+                          </div>
+                          <button 
+                            onClick={handleRegisterTeam}
+                            disabled={isSubmitting || !teamForm.name || !teamForm.phone || !teamForm.profession || !teamForm.description}
+                            className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+                          >
+                            {isSubmitting ? 'Бүртгэж байна...' : 'Бүртгүүлэх'}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {teamTab === 3 && (
+                      <motion.div 
+                        key="monnam-view" 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="space-y-6"
+                      >
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl">
+                          <button 
+                            onClick={() => setTeamTab(0)}
+                            className="flex items-center gap-2 text-slate-400 hover:text-brand-600 transition-colors mb-6 font-bold text-sm"
+                          >
+                            <ChevronRight size={16} className="rotate-180" />
+                            Буцах
+                          </button>
+                          <div className="text-center py-12">
+                            <div className="w-20 h-20 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                              <Rocket size={40} className="text-brand-600" />
+                            </div>
+                            <h2 className="text-2xl font-display font-bold text-slate-900 mb-2">Монгол Олны Нам</h2>
+                            <p className="text-slate-500 max-w-md mx-auto">
+                              Удахгүй нэмэгдэх болно. Энэ хэсэгт Монгол Олны Намын талаарх мэдээлэл болон үйл ажиллагаанууд харагдах болно.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'apps' && (
+              <div className="max-w-2xl mx-auto space-y-8 pb-24">
+                <div className="flex bg-slate-100 p-1 rounded-2xl mb-8">
+                  {['Add App', 'App List'].map((title, i) => (
+                    <button
+                      key={title}
+                      onClick={() => setAppsTab(i)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all",
+                        appsTab === i 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      {title}
+                    </button>
+                  ))}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {appsTab === 0 && (
+                    <motion.div
+                      key="add-app"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl"
+                    >
+                      <h2 className="font-display font-bold text-2xl text-slate-900 mb-6 flex items-center gap-2">
+                        <Plus className="text-brand-600" />
+                        Add App
+                      </h2>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Name</label>
+                            <input 
+                              type="text" 
+                              value={appForm.name}
+                              onChange={e => setAppForm({...appForm, name: e.target.value})}
+                              placeholder="App Name"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Type</label>
+                            <input 
+                              type="text" 
+                              value={appForm.type}
+                              onChange={e => setAppForm({...appForm, type: e.target.value})}
+                              placeholder="App Type (e.g. Fintech, E-commerce)"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">App Logo</label>
+                          <div className="flex items-center gap-4">
+                            {appLogo ? (
+                              <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-slate-200">
+                                <img src={appLogo} alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <button 
+                                  onClick={() => setAppLogo(null)}
+                                  className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-lg shadow-lg hover:bg-rose-600 transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-all text-slate-400 hover:text-brand-600">
+                                <Upload size={20} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Upload</span>
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      try {
+                                        const compressed = await compressImage(file, 400, 400, 0.7);
+                                        setAppLogo(compressed);
+                                      } catch (error) {
+                                        console.error("Failed to compress logo:", error);
+                                      }
+                                    }
+                                  }} 
+                                  className="hidden" 
+                                />
+                              </label>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Link</label>
+                          <input 
+                            type="url" 
+                            value={appForm.link}
+                            onChange={e => setAppForm({...appForm, link: e.target.value})}
+                            placeholder="https://example.com"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Description</label>
+                          <textarea 
+                            value={appForm.description}
+                            onChange={e => setAppForm({...appForm, description: e.target.value})}
+                            placeholder="Briefly describe your app..."
+                            rows={3}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none resize-none"
+                          />
+                        </div>
+
+                        <button 
+                          onClick={handleAddApp}
+                          disabled={isSubmitting || !appForm.name || !appForm.type || !appForm.link || !appForm.description || !appLogo}
+                          className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+                        >
+                          {isSubmitting ? 'Adding...' : 'Add App'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {appsTab === 1 && (
+                    <motion.div
+                      key="app-list"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                        <Zap className="text-brand-600" />
+                        App List
+                      </h2>
+
+                      {allApps.length === 0 ? (
+                        <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-sm text-center">
+                          <p className="text-slate-400 font-medium">No apps added yet.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                          {allApps.map(app => (
+                            <div key={app.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-6">
+                              <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-100 flex-shrink-0">
+                                <img src={app.logoUrl} alt={app.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              </div>
+                              <div className="flex-grow">
+                                <div className="flex items-center justify-between mb-1">
+                                  <h4 className="font-bold text-slate-900">{app.name}</h4>
+                                  <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                    {app.type}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-slate-500 line-clamp-2 mb-2">{app.description}</p>
+                                <a 
+                                  href={app.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] font-bold text-brand-600 hover:underline flex items-center gap-1"
+                                >
+                                  Visit App <ChevronRight size={12} />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {activeTab === 'book' && (
+              <div className="max-w-2xl mx-auto space-y-8 pb-24">
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setBookTab(5)}
+                    className={cn(
+                      "w-full py-4 px-6 rounded-2xl font-display font-bold text-lg transition-all flex items-center justify-center gap-2 shadow-sm",
+                      bookTab === 5 
+                        ? "bg-brand-600 text-white shadow-brand-600/20" 
+                        : "bg-white text-slate-600 border border-slate-100 hover:bg-slate-50"
+                    )}
+                  >
+                    <BookOpen size={20} />
+                    Миний Намтар
+                  </button>
+                  <div className="flex bg-slate-100 p-1 rounded-2xl overflow-x-auto scrollbar-hide">
+                    <button
+                      onClick={() => setBookTab(0)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                        bookTab === 0 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      Бүгд
+                    </button>
+                    <button
+                      onClick={() => setBookTab(1)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
+                        bookTab === 1 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      MVP
+                    </button>
+                    <button
+                      onClick={() => setBookTab(2)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl flex justify-center transition-all",
+                        bookTab === 2 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                      title="CRA Rating"
+                    >
+                      <Star size={18} fill={bookTab === 2 ? "currentColor" : "none"} />
+                    </button>
+                    <button
+                      onClick={() => setBookTab(3)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl flex justify-center transition-all",
+                        bookTab === 3 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                      title="CRC Report"
+                    >
+                      <FileText size={18} />
+                    </button>
+                    <button
+                      onClick={() => setBookTab(4)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl flex justify-center transition-all",
+                        bookTab === 4 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-400 hover:text-slate-600"
+                      )}
+                      title="CTR Trust"
+                    >
+                      <ShieldCheck size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {(bookTab === 0 || bookTab === 1) && (
+                    <motion.div
+                      key="mvp"
+                      initial={bookTab === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6 mb-8"
+                    >
+                      {/* MVP Stats Cards */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center">
+                          <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Rocket className="text-brand-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">MVP</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">1,000,000₮ Эрх</h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Most Valuable Person)</p>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center">
+                          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <TrendingUp className="text-emerald-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">MVP Average</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">0₮</h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">0 Хүн (Most Valuable Person)</p>
+                        </div>
+                      </div>
+
+                      {/* MVP Content */}
+                      {bookTab !== 0 && (
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-8">
+                          <section>
+                            <h4 className="font-display font-bold text-xl text-slate-900 mb-3 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-brand-600 rounded-full" />
+                              MVP эрх хэрхэн өсөх вэ?
+                            </h4>
+                            <div className="space-y-4 text-slate-600 leading-relaxed">
+                              <p>
+                                MVP эрх нь тухайн хүний өөрийн бүтээсэн үнэ цэнэ, олон нийтийн итгэл, дэмжлэг дээр үндэслэн өснө.
+                              </p>
+                              <p className="bg-slate-50 p-4 rounded-2xl border border-slate-100 italic">
+                                "Өөрөөр хэлбэл, хүн өөрөө үнэ цэнээ бий болгож, тэр үнэ цэнээрээ эрхээ тогтоолгоно."
+                              </p>
+                              <p>
+                                Хэрэв тухайн хүн үнэхээр зөв, баталгаатай, олонд танигдсан, бодит нөлөөтэй болсон бол бидэнтэй холбогдон өөрийн эрхээ албан ёсоор тогтоолгох боломжтой.
+                              </p>
+                            </div>
+                          </section>
+
+                          <div className="h-px bg-slate-50" />
+
+                          <section>
+                            <h4 className="font-display font-bold text-xl text-slate-900 mb-3 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                              MVP Average гэж юу вэ?
+                            </h4>
+                            <p className="text-slate-600 leading-relaxed mb-6">
+                              MVP Average нь тухайн хүнийг дэмжсэн хүмүүсийн өгсөн мөнгөн дэмжлэгийн дундаж хэмжээг илэрхийлнэ.
+                            </p>
+
+                            <div className="bg-brand-50/50 p-6 rounded-3xl border border-brand-100">
+                              <h5 className="font-bold text-brand-900 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                <Star size={16} className="text-brand-600" />
+                                Жишээ:
+                              </h5>
+                              <div className="space-y-3 text-sm">
+                                <div className="flex justify-between items-center text-slate-600">
+                                  <span>2 хүн мөнгө өгч дэмжсэн гэж үзье:</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="bg-white p-3 rounded-xl border border-brand-100 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">1-р хүн</p>
+                                    <p className="font-bold text-slate-900">90,000₮</p>
+                                  </div>
+                                  <div className="bg-white p-3 rounded-xl border border-brand-100 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">2-р хүн</p>
+                                    <p className="font-bold text-slate-900">10,000₮</p>
+                                  </div>
+                                </div>
+                                <div className="pt-3 border-t border-brand-100 space-y-2">
+                                  <div className="flex justify-between text-slate-600">
+                                    <span>Нийт дэмжлэг:</span>
+                                    <span className="font-bold text-slate-900">100,000₮</span>
+                                  </div>
+                                  <div className="flex justify-between text-slate-600">
+                                    <span>Нийт дэмжсэн хүний тоо:</span>
+                                    <span className="font-bold text-slate-900">2</span>
+                                  </div>
+                                  <div className="flex justify-between items-center pt-2 mt-2 border-t border-brand-200">
+                                    <span className="font-bold text-brand-900">MVP Average:</span>
+                                    <span className="bg-brand-600 text-white px-3 py-1 rounded-lg font-bold">50,000₮</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </section>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {(bookTab === 0 || bookTab === 2) && (
+                    <motion.div
+                      key="cra"
+                      initial={bookTab === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6 mb-8"
+                    >
+                      {/* CRA Stats Cards */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <button 
+                          onClick={() => {
+                            setCRARatingType('free');
+                            setShowCRARatingModal(true);
+                          }}
+                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-amber-200 transition-all group"
+                        >
+                          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-amber-100 transition-colors">
+                            <Star className="text-amber-500" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CRA Free</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">
+                            {allCRARatings.filter(r => r.type === 'free').length > 0
+                              ? Math.round(allCRARatings.filter(r => r.type === 'free').reduce((acc, curr) => acc + curr.rating, 0) / allCRARatings.filter(r => r.type === 'free').length)
+                              : 0}
+                            <span className="text-xs text-slate-400 ml-1 font-sans">
+                              ({allCRARatings.filter(r => r.type === 'free').length} хүн)
+                            </span>
+                          </h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Community Rating Average)</p>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setCRARatingType('paid');
+                            setRatingStep('payment');
+                            setShowCRARatingModal(true);
+                          }}
+                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-brand-200 transition-all group"
+                        >
+                          <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-100 transition-colors">
+                            <Zap className="text-brand-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CRA Paid</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">
+                            {allCRARatings.filter(r => r.type === 'paid').length > 0
+                              ? Math.round(allCRARatings.filter(r => r.type === 'paid').reduce((acc, curr) => acc + curr.rating, 0) / allCRARatings.filter(r => r.type === 'paid').length)
+                              : 0}
+                            <span className="text-xs text-slate-400 ml-1 font-sans">
+                              ({allCRARatings.filter(r => r.type === 'paid').length} хүн)
+                            </span>
+                          </h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Community Rating Average)</p>
+                        </button>
+                      </div>
+
+                      {/* CRA Content */}
+                      {bookTab !== 0 && (
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-display font-bold text-xl text-slate-900 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+                              Үнэлгээний систем
+                            </h4>
+                            <button 
+                              onClick={() => setShowCRAInfo(!showCRAInfo)}
+                              className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
+                            >
+                              <Info size={20} />
+                            </button>
+                          </div>
+
+                          <AnimatePresence>
+                            {showCRAInfo && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600 space-y-4">
+                                  <p>
+                                    Үнэлгээ өгөхөд 1-100 хүртэл өгөх боломжтой. Энэхүү үнэлгээ нь олон нийтийн зүгээс өгч буй бодит үнэлэмжийг илэрхийлнэ.
+                                  </p>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-xl border border-slate-100">
+                                      <p className="font-bold text-slate-900 mb-1">CRA Free</p>
+                                      <p className="text-xs">Үнэ төлбөргүйгээр 1-100 хүртэлх үнэлгээг өгөх боломжтой.</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border border-slate-100">
+                                      <p className="font-bold text-slate-900 mb-1">CRA Paid</p>
+                                      <p className="text-xs">5,000₮ төлөн 1-100 хүртэлх үнэлгээг өгөх боломжтой. Энэ нь илүү өндөр жинтэй үнэлгээ болно.</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          <div className="h-px bg-slate-50" />
+
+                          {/* CRA History */}
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Үнэлгээний түүх</h5>
+                            {allCRARatings.length === 0 ? (
+                              <p className="text-center py-8 text-slate-400 text-sm">Одоогоор үнэлгээ байхгүй байна.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {allCRARatings.slice(0, 10).map(rating => (
+                                  <div key={rating.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                      <div className={cn(
+                                        "w-8 h-8 rounded-lg flex items-center justify-center text-white",
+                                        rating.type === 'free' ? "bg-amber-500" : "bg-brand-600"
+                                      )}>
+                                        {rating.type === 'free' ? <Star size={14} /> : <Zap size={14} />}
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-slate-900">
+                                          {rating.type === 'free' ? 'CRA Free' : 'CRA Paid'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {rating.timestamp?.toDate().toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-bold text-brand-600">{rating.rating}</p>
+                                      <p className="text-[10px] text-slate-400 uppercase font-bold">Rating</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {(bookTab === 0 || bookTab === 3) && (
+                    <motion.div
+                      key="crc"
+                      initial={bookTab === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6 mb-8"
+                    >
+                      {/* CRC Stats Cards */}
+                      <div className="space-y-4">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center">
+                          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <FileText className="text-blue-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Report</p>
+                          <h3 className={cn(
+                            "font-display font-bold text-3xl",
+                            crcTotals.total >= 0 ? "text-emerald-600" : "text-rose-600"
+                          )}>
+                            {crcTotals.total > 0 ? '+' : ''}{formatNumber(crcTotals.total)} Кредит
+                          </h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Community Report Credit)</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <button 
+                            onClick={() => {
+                              setCRCReportType('bad');
+                              setShowCRCReportModal(true);
+                            }}
+                            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-rose-200 transition-all group"
+                          >
+                            <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-rose-100 transition-colors">
+                              <ShieldAlert className="text-rose-600" size={24} />
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Bad Report</p>
+                            <h3 className="font-display font-bold text-xl text-rose-600">
+                              {crcTotals.bad > 0 ? '+' : ''}{formatNumber(crcTotals.bad)}
+                            </h3>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setCRCReportType('good');
+                              setShowCRCReportModal(true);
+                            }}
+                            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-emerald-200 transition-all group"
+                          >
+                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-emerald-100 transition-colors">
+                              <ShieldCheck className="text-emerald-600" size={24} />
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Good Report</p>
+                            <h3 className="font-display font-bold text-xl text-emerald-600">
+                              {crcTotals.good > 0 ? '+' : ''}{formatNumber(crcTotals.good)}
+                            </h3>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* CRC Content */}
+                      {bookTab !== 0 && (
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-display font-bold text-xl text-slate-900 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                              CRC Систем
+                            </h4>
+                            <button 
+                              onClick={() => setShowCRCInfo(!showCRCInfo)}
+                              className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
+                            >
+                              <Info size={20} />
+                            </button>
+                          </div>
+
+                          <AnimatePresence>
+                            {showCRCInfo && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600">
+                                  <p>
+                                    Community Report Credit - Энэхүү систем нь иргэдийн бие биедээ өгч буй итгэлцлийн тайлан юм. Сайн болон муу үйлдлүүдийг тайлагнаснаар тухайн хүний кредит оноо өөрчлөгдөнө.
+                                  </p>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          <div className="h-px bg-slate-50" />
+
+                          {/* CRC History */}
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Тайлангийн түүх</h5>
+                            {allCRCReports.length === 0 ? (
+                              <p className="text-center py-8 text-slate-400 text-sm">Одоогоор тайлан байхгүй байна.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {allCRCReports.slice(0, 10).map(report => (
+                                  <div key={report.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          "w-6 h-6 rounded-full flex items-center justify-center text-white",
+                                          report.type === 'good' ? "bg-emerald-500" : "bg-rose-500"
+                                        )}>
+                                          {report.type === 'good' ? <ShieldCheck size={12} /> : <ShieldAlert size={12} />}
+                                        </div>
+                                        <span className={cn(
+                                          "text-[10px] font-bold uppercase tracking-wider",
+                                          report.type === 'good' ? "text-emerald-600" : "text-rose-600"
+                                        )}>
+                                          {report.type === 'good' ? 'Good Report' : 'Bad Report'}
+                                        </span>
+                                      </div>
+                                      <span className={cn(
+                                        "font-bold text-sm",
+                                        report.type === 'good' ? "text-emerald-600" : "text-rose-600"
+                                      )}>
+                                        {report.type === 'good' ? '+' : ''}{report.credit} Credit
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-slate-700 font-medium mb-1">{report.reason}</p>
+                                    <p className="text-[10px] text-slate-400">
+                                      {report.timestamp?.toDate().toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {(bookTab === 0 || bookTab === 4) && (
+                    <motion.div
+                      key="ctr"
+                      initial={bookTab === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6 mb-8"
+                    >
+                      {/* CTR Stats Cards */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <button 
+                          onClick={() => {
+                            setCTRRatingType('free');
+                            setShowCTRRatingModal(true);
+                          }}
+                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-emerald-200 transition-all group"
+                        >
+                          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-emerald-100 transition-colors">
+                            <ShieldCheck className="text-emerald-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CTR Free</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">
+                            {allCTRRatings.filter(r => r.type === 'free').length > 0
+                              ? Math.round(allCTRRatings.filter(r => r.type === 'free').reduce((acc, curr) => acc + curr.rating, 0) / allCTRRatings.filter(r => r.type === 'free').length)
+                              : 0}
+                            <span className="text-xs text-slate-400 ml-1 font-sans">
+                              ({allCTRRatings.filter(r => r.type === 'free').length} хүн)
+                            </span>
+                          </h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Community Trust Rating)</p>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setCTRRatingType('paid');
+                            setRatingStep('payment');
+                            setShowCTRRatingModal(true);
+                          }}
+                          className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl text-center hover:border-brand-200 transition-all group"
+                        >
+                          <div className="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-brand-100 transition-colors">
+                            <Zap className="text-brand-600" size={24} />
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CTR Paid</p>
+                          <h3 className="font-display font-bold text-xl text-slate-900">
+                            {allCTRRatings.filter(r => r.type === 'paid').length > 0
+                              ? Math.round(allCTRRatings.filter(r => r.type === 'paid').reduce((acc, curr) => acc + curr.rating, 0) / allCTRRatings.filter(r => r.type === 'paid').length)
+                              : 0}
+                            <span className="text-xs text-slate-400 ml-1 font-sans">
+                              ({allCTRRatings.filter(r => r.type === 'paid').length} хүн)
+                            </span>
+                          </h3>
+                          <p className="text-[10px] text-slate-400 font-medium mt-1">(Community Trust Rating)</p>
+                        </button>
+                      </div>
+
+                      {/* CTR Content */}
+                      {bookTab !== 0 && (
+                        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-display font-bold text-xl text-slate-900 flex items-center gap-2">
+                              <div className="w-1.5 h-6 bg-emerald-500 rounded-full" />
+                              Итгэлцлийн үнэлгээ
+                            </h4>
+                            <button 
+                              onClick={() => setShowCTRInfo(!showCTRInfo)}
+                              className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
+                            >
+                              <Info size={20} />
+                            </button>
+                          </div>
+
+                          <AnimatePresence>
+                            {showCTRInfo && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-sm text-slate-600 space-y-4">
+                                  <p>
+                                    Community Trust Rating - Энэхүү үнэлгээ нь олон нийтийн зүгээс тухайн хүнд хэр зэрэг итгэж буйг илэрхийлнэ.
+                                  </p>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white p-4 rounded-xl border border-slate-100">
+                                      <p className="font-bold text-slate-900 mb-1">CTR Free</p>
+                                      <p className="text-xs">Үнэ төлбөргүйгээр 1-100 хүртэлх үнэлгээг өгөх боломжтой.</p>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl border border-slate-100">
+                                      <p className="font-bold text-slate-900 mb-1">CTR Paid</p>
+                                      <p className="text-xs">5,000₮ төлөн 1-100 хүртэлх үнэлгээг өгөх боломжтой. Энэ нь илүү өндөр жинтэй үнэлгээ болно.</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          <div className="h-px bg-slate-50" />
+
+                          {/* CTR History */}
+                          <div className="space-y-4">
+                            <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Үнэлгээний түүх</h5>
+                            {allCTRRatings.length === 0 ? (
+                              <p className="text-center py-8 text-slate-400 text-sm">Одоогоор үнэлгээ байхгүй байна.</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {allCTRRatings.slice(0, 10).map(rating => (
+                                  <div key={rating.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <div className="flex items-center gap-3">
+                                      <div className={cn(
+                                        "w-8 h-8 rounded-lg flex items-center justify-center text-white",
+                                        rating.type === 'free' ? "bg-emerald-500" : "bg-brand-600"
+                                      )}>
+                                        {rating.type === 'free' ? <ShieldCheck size={14} /> : <Zap size={14} />}
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-slate-900">
+                                          {rating.type === 'free' ? 'CTR Free' : 'CTR Paid'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400">
+                                          {rating.timestamp?.toDate().toLocaleString()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-bold text-brand-600">{rating.rating}</p>
+                                      <p className="text-[10px] text-slate-400 uppercase font-bold">Rating</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {bookTab === 5 && (
+                    <motion.div
+                      key="biography"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                          <BookOpen className="text-brand-600" />
+                          Миний Намтар
+                        </h2>
+                        <button 
+                          onClick={() => setShowBiographyForm(!showBiographyForm)}
+                          className="px-4 py-2 bg-brand-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-all flex items-center gap-2"
+                        >
+                          <Plus size={16} />
+                          Ажил нэмэх
+                        </button>
+                      </div>
+
+                      <AnimatePresence>
+                        {showBiographyForm && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl space-y-4 mb-8">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Миний Хийсэн Ажил Нэр</label>
+                                  <input 
+                                    type="text" 
+                                    value={biographyForm.projectName}
+                                    onChange={e => setBiographyForm({...biographyForm, projectName: e.target.value})}
+                                    placeholder="Ажлын нэр"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Тухайн Ажлын Нийт Зардал</label>
+                                  <input 
+                                    type="number" 
+                                    value={biographyForm.totalCost}
+                                    onChange={e => setBiographyForm({...biographyForm, totalCost: e.target.value})}
+                                    placeholder="Зардал (₮)"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Тайлбар</label>
+                                <textarea 
+                                  value={biographyForm.description}
+                                  onChange={e => setBiographyForm({...biographyForm, description: e.target.value})}
+                                  placeholder="Ажлын дэлгэрэнгүй тайлбар..."
+                                  rows={4}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none resize-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Энэ Ажлыг Хийхэд Оролцсон Хүмүүс</label>
+                                <input 
+                                  type="text" 
+                                  value={biographyForm.peopleInvolved}
+                                  onChange={e => setBiographyForm({...biographyForm, peopleInvolved: e.target.value})}
+                                  placeholder="Хүмүүсийн нэрс..."
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                                />
+                              </div>
+                              <button 
+                                onClick={handleRegisterBiography}
+                                disabled={isSubmitting || !biographyForm.projectName || !biographyForm.totalCost || !biographyForm.description || !biographyForm.peopleInvolved}
+                                className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+                              >
+                                {isSubmitting ? 'Бүртгэж байна...' : 'Бүртгүүлэх'}
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="space-y-6">
+                        {allBiographyEntries.length === 0 ? (
+                          <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-sm text-center">
+                            <p className="text-slate-400 font-medium">Одоогоор намтар нэмэгдээгүй байна.</p>
+                          </div>
+                        ) : (
+                          allBiographyEntries.map(entry => (
+                            <div key={entry.id} className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden">
+                              <div className="h-48 w-full overflow-hidden">
+                                <img 
+                                  src={entry.imageUrl} 
+                                  alt={entry.projectName} 
+                                  className="w-full h-full object-cover"
+                                  referrerPolicy="no-referrer"
+                                />
+                              </div>
+                              <div className="p-6 space-y-4">
+                                <div className="flex justify-between items-start">
+                                  <h3 className="font-display font-bold text-xl text-slate-900">{entry.projectName}</h3>
+                                  <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-xs font-bold">
+                                    {formatNumber(entry.totalCost)}₮
+                                  </span>
+                                </div>
+                                <p className="text-slate-600 text-sm leading-relaxed">{entry.description}</p>
+                                <div className="pt-4 border-t border-slate-50">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Оролцсон хүмүүс</p>
+                                  <p className="text-sm text-slate-700 font-medium">{entry.peopleInvolved}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {activeTab === 'shop' && (
+              <div className="max-w-2xl mx-auto space-y-6 pb-24">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center">
+                      <ShoppingBag size={20} className="text-white" />
+                    </div>
+                    <div>
+                      <h2 className="font-display font-bold text-2xl text-slate-900">Дэлгүүр</h2>
+                      <p className="text-slate-400 text-xs">{products.length} бараа</p>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setShowProductForm(v => !v)}
+                      className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-2xl text-sm font-bold shadow-lg shadow-brand-600/20 hover:bg-brand-700 transition-colors"
+                    >
+                      <Plus size={16} /> Бараа нэмэх
+                    </button>
+                  )}
+                </div>
+
+                {/* Add product form (admin) */}
+                {isAdmin && showProductForm && (
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                    className="bg-white rounded-3xl border border-brand-100 shadow-xl overflow-hidden">
+                    <div className="p-5 bg-gradient-to-r from-brand-500 to-brand-700 flex items-center gap-2">
+                      <Package size={18} className="text-white" />
+                      <h3 className="font-bold text-white text-lg">Бараа нэмэх</h3>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Барааны нэр</label>
+                        <input type="text" value={productForm.name}
+                          onChange={e => setProductForm({...productForm, name: e.target.value})}
+                          placeholder="Жишээ: Цамц, Ном..."
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-400 text-sm" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Барааны үнэ (₮)</label>
+                        <input type="number" value={productForm.price}
+                          onChange={e => setProductForm({...productForm, price: e.target.value})}
+                          placeholder="Жишээ: 25000"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-400 text-sm" />
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => setShowProductForm(false)}
+                          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 text-sm font-medium hover:bg-slate-50">
+                          Цуцлах
+                        </button>
+                        <button onClick={handleProductAdd} disabled={!productForm.name.trim() || !productForm.price}
+                          className="flex-1 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-1">
+                          <Check size={14} /> Нэмэх
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Product list */}
+                {products.length === 0 ? (
+                  <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center">
+                    <ShoppingBag size={48} className="text-slate-200 mx-auto mb-4" />
+                    <p className="text-slate-400 font-medium">Одоогоор бараа байхгүй байна</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {products.map((product) => (
+                      <motion.div key={product.id}
+                        whileHover={{ y: -2 }}
+                        className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden hover:shadow-lg transition-all"
+                      >
+                        <div className="h-32 bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center">
+                          <Package size={48} className="text-brand-300" />
+                        </div>
+                        <div className="p-4">
+                          <h3 className="font-bold text-slate-900 text-base mb-1">{product.name}</h3>
+                          <p className="text-brand-600 font-bold text-lg mb-3">{Number(product.price).toLocaleString()}₮</p>
+                          <button
+                            onClick={() => { setSelectedProduct(product); setOrderType('direct'); setOrderForm({ phone: '', address: '' }); }}
+                            className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl text-sm transition-colors flex items-center justify-center gap-2"
+                          >
+                            <ShoppingBag size={16} /> Авах
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'citizens' && (
+              <div className="max-w-2xl mx-auto space-y-8 pb-24">
+                <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl">
+                  <h2 className="font-display font-bold text-2xl text-slate-900 mb-6 flex items-center gap-2">
+                    <Users className="text-brand-600" />
+                    Иргэд
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    {uniqueCitizens.length === 0 ? (
+                      <p className="text-center py-12 text-slate-400 font-medium">Одоогоор бүртгэлтэй иргэн байхгүй байна.</p>
+                    ) : (
+                      uniqueCitizens.map((supporter) => (
+                        <div 
+                          key={supporter.uniqueKey} 
+                          onClick={() => setSelectedCitizen(supporter)}
+                          className="p-4 rounded-2xl bg-white border border-slate-100 flex items-start gap-4 cursor-pointer hover:shadow-md transition-all group"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-lg flex-shrink-0 group-hover:bg-brand-200 transition-colors">
+                            {supporter.name.charAt(0)}
+                          </div>
+                          <div className="flex-grow">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-bold text-slate-900">{supporter.name}</h4>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+                                  {supporter.supportCount} удаа
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                  {supporter.timestamp?.toDate().toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 mb-2">{supporter.phone.replace(/(\d{4})(\d{4})/, '$1-****')}</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-emerald-600">{formatCurrency(supporter.totalAmount)}</p>
+                              {supporter.businessInfo && (
+                                <p className="text-[10px] text-slate-400 italic line-clamp-1 max-w-[150px]">"{supporter.businessInfo}"</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'support' && (
+              <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl border border-slate-100 shadow-xl mb-24">
+                <h2 className="font-display font-bold text-2xl text-slate-900 mb-6 flex items-center gap-2">
+                  <Heart className="text-brand-600" />
+                  Дэмжлэг үзүүлэх
+                </h2>
+                
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Нэр</label>
+                      <input 
+                        type="text" 
+                        value={supportForm.name}
+                        onChange={e => setSupportForm({...supportForm, name: e.target.value})}
+                        placeholder="Таны нэр"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дугаар</label>
+                      <input 
+                        type="tel" 
+                        value={supportForm.phone}
+                        onChange={e => setSupportForm({...supportForm, phone: e.target.value})}
+                        placeholder="Таны утасны дугаар"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Дүн (₮)</label>
+                      <input 
+                        type="number" 
+                        value={customAmount}
+                        onChange={e => setCustomAmount(e.target.value)}
+                        placeholder="Дэмжлэгийн дүн оруулна уу"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Захих Үг</label>
+                      <textarea 
+                        value={supportForm.message}
+                        onChange={e => setSupportForm({...supportForm, message: e.target.value})}
+                        placeholder="Жишээ нь: Заавал гишүүн болоорой..."
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleSupport({ ...supportForm, amount: Number(customAmount) })}
+                    disabled={!supportForm.name || !customAmount}
+                    className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50"
+                  >
+                    Дэмжих
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'tasks' && (
+              <div className="max-w-2xl mx-auto space-y-8 pb-24">
+                {/* Task Sub-tabs */}
+                <div className="flex bg-slate-100 p-1 rounded-2xl mb-8">
+                  {['Даалгавар өгөх', 'Нийт даалгаврууд'].map((title, i) => (
+                    <button
+                      key={title}
+                      onClick={() => setTaskTab(i)}
+                      className={cn(
+                        "flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all",
+                        taskTab === i 
+                          ? "bg-white text-brand-600 shadow-sm" 
+                          : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      {title}
+                    </button>
+                  ))}
+                </div>
+
+                <AnimatePresence mode="wait">
+                  {taskTab === 0 && (
+                    <motion.div
+                      key="give-task"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl"
+                    >
+                      <h2 className="font-display font-bold text-2xl text-slate-900 mb-6 flex items-center gap-2">
+                        <Plus className="text-brand-600" />
+                        Даалгавар өгөх
+                      </h2>
+
+                      <div className="mb-8 p-4 bg-brand-50 border border-brand-100 rounded-2xl flex items-start gap-3">
+                        <div className="p-2 bg-brand-100 rounded-xl text-brand-600">
+                          <Zap size={20} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-brand-900 text-sm">Даалгавар өгөх нөхцөл</p>
+                          <p className="text-brand-700 text-xs">Даалгавар өгөхийн тулд та 1,000,000₮ ба түүнээс дээш дэмжлэг өгөх шаардлагатай.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Нэр</label>
+                            <input 
+                              type="text" 
+                              value={taskForm.name}
+                              onChange={e => setTaskForm({...taskForm, name: e.target.value})}
+                              placeholder="Таны нэр"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Утас</label>
+                            <input 
+                              type="tel" 
+                              value={taskForm.phone}
+                              onChange={e => setTaskForm({...taskForm, phone: e.target.value})}
+                              placeholder="Утасны дугаар"
+                              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Өгөх Даалгавар</label>
+                          <textarea 
+                            value={taskForm.description}
+                            onChange={e => setTaskForm({...taskForm, description: e.target.value})}
+                            placeholder="Жишээ нь: 120 дээр сагсанбөмбөгийн талбай маш их хэрэгтэй байгаа энэ асуудлыг шийдэхийг хүсч байна."
+                            rows={4}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Зураг хавсаргах</label>
+                          <div className="flex items-center gap-4">
+                            {taskImage ? (
+                              <div className="relative w-32 h-32 rounded-2xl overflow-hidden border border-slate-200">
+                                <img src={taskImage} alt="Task" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                <button 
+                                  onClick={() => setTaskImage(null)}
+                                  className="absolute top-1 right-1 p-1.5 bg-rose-500 text-white rounded-lg shadow-lg hover:bg-rose-600 transition-colors"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-brand-300 hover:bg-brand-50/30 transition-all text-slate-400 hover:text-brand-600">
+                                <Upload size={24} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Зураг</span>
+                                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                              </label>
+                            )}
+                            <div className="flex-1">
+                              <p className="text-[10px] text-slate-400 leading-relaxed">
+                                Даалгавартай холбоотой зураг хавсаргаснаар илүү ойлгомжтой болох болно. (Макс: 800KB)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Нэмэлт Дэмжлэг (Хэрвээ хүсвэл)</label>
+                          <div className="flex flex-wrap gap-2">
+                            {[0, 10000, 20000].map(amt => (
+                              <button
+                                key={amt}
+                                onClick={() => setTaskSupportAmount(amt)}
+                                className={cn(
+                                  "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                                  taskSupportAmount === amt 
+                                    ? "bg-brand-600 text-white shadow-lg shadow-brand-600/20" 
+                                    : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                                )}
+                              >
+                                {amt === 0 ? 'Үгүй' : formatCurrency(amt)}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => setTaskSupportAmount('custom')}
+                              className={cn(
+                                "px-4 py-2 rounded-xl text-sm font-bold transition-all",
+                                taskSupportAmount === 'custom' 
+                                  ? "bg-brand-600 text-white shadow-lg shadow-brand-600/20" 
+                                  : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                              )}
+                            >
+                              Custom
+                            </button>
+                          </div>
+                          {taskSupportAmount === 'custom' && (
+                            <input 
+                              type="number" 
+                              value={customTaskSupport}
+                              onChange={e => setCustomTaskSupport(e.target.value)}
+                              placeholder="Дүн оруулна уу"
+                              className="mt-3 w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-brand-500 outline-none"
+                            />
+                          )}
+                        </div>
+
+                        <button 
+                          onClick={handleGiveTask}
+                          disabled={isSubmitting || !taskForm.name || !taskForm.phone || !taskForm.description}
+                          className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                          {isSubmitting ? 'Уншиж байна...' : 'Даалгавар Оруулах'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {taskTab === 1 && (
+                    <motion.div
+                      key="total-tasks"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-6"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                          <ClipboardList className="text-brand-600" />
+                          Нийт даалгаврууд
+                        </h2>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full">
+                          {allTasks.length} Tasks
+                        </p>
+                      </div>
+
+                      <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100 mb-4">
+                        <p className="text-xs font-bold text-brand-700 flex items-center gap-2">
+                          <Zap size={14} />
+                          Жагсаалтын ТОП 1 даалгаврыг манайх шууд авч хэрэгжүүлнэ!
+                        </p>
+                      </div>
+
+                      {allTasks.length === 0 ? (
+                        <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-sm text-center">
+                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <ClipboardList className="text-slate-300" size={32} />
+                          </div>
+                          <p className="text-slate-400 font-medium">Одоогоор даалгавар байхгүй байна.</p>
+                        </div>
+                      ) : (
+                        [...allTasks]
+                          .sort((a, b) => (b.likes || 0) - (a.likes || 0))
+                          .map((task, index) => (
+                          <div 
+                            key={task.id} 
+                            className={cn(
+                              "bg-white p-6 rounded-3xl border transition-all relative overflow-hidden h-[280px] flex flex-col",
+                              index === 0 ? "border-brand-200 shadow-xl shadow-brand-600/5 ring-2 ring-brand-500/10" : "border-slate-100 shadow-sm"
+                            )}
+                          >
+                            {index === 0 && (
+                              <div className="absolute top-0 right-0 bg-brand-600 text-white px-4 py-1 rounded-bl-2xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 z-10">
+                                <Crown size={12} />
+                                Top 1
+                              </div>
+                            )}
+                            
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold">
+                                  {task.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-900">{task.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                                    {task.timestamp?.toDate().toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className={cn(
+                                "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                task.status === 'completed' ? "bg-emerald-100 text-emerald-600" :
+                                task.status === 'in-progress' ? "bg-amber-100 text-amber-600" :
+                                "bg-slate-100 text-slate-400"
+                              )}>
+                                {task.status}
+                              </div>
+                            </div>
+
+                            <p className="text-slate-600 leading-relaxed mb-4 line-clamp-3 flex-grow">{task.description}</p>
+
+                            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-50 mt-auto">
+                              <div className="flex items-center gap-4">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLikeTask(task.id);
+                                  }}
+                                  className="flex items-center gap-1.5 text-slate-600 hover:text-emerald-600 transition-colors"
+                                >
+                                  <ThumbsUp size={16} />
+                                  <span className="text-sm font-bold">{task.likes || 0}</span>
+                                </button>
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDislikeTask(task.id);
+                                  }}
+                                  className="flex items-center gap-1.5 text-slate-600 hover:text-rose-600 transition-colors"
+                                >
+                                  <ThumbsDown size={16} />
+                                  <span className="text-sm font-bold">{task.dislikes || 0}</span>
+                                </button>
+                              </div>
+                              
+                              <button 
+                                onClick={() => setSelectedTask(task)}
+                                className="ml-auto text-brand-600 text-xs font-bold uppercase tracking-widest flex items-center gap-1 hover:text-brand-700 transition-colors"
+                              >
+                                Дэлгэрэнгүй <ChevronRight size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </main>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-slate-100 px-6 py-3 z-[100]">
+        <div className="max-w-lg mx-auto flex justify-around items-center">
+          <button 
+            onClick={() => setActiveTab('apps')}
+            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'apps' ? "text-brand-600" : "text-slate-400 hover:text-slate-600")}
+          >
+            <Zap size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">My Apps</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('team')}
+            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'team' ? "text-brand-600" : "text-slate-400 hover:text-slate-600")}
+          >
+            <Trophy size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">My Team</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('support')}
+            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'support' ? "text-brand-600" : "text-slate-400 hover:text-slate-600")}
+          >
+            <div className={cn("p-3 rounded-2xl -mt-8 shadow-xl transition-all", activeTab === 'support' ? "bg-brand-600 text-white shadow-brand-600/40" : "bg-white text-slate-400 border border-slate-100")}>
+              <Heart size={28} fill={activeTab === 'support' ? "currentColor" : "none"} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Support</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('tasks')}
+            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'tasks' ? "text-brand-600" : "text-slate-400 hover:text-slate-600")}
+          >
+            <ClipboardList size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Tasks</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('book')}
+            className={cn("flex flex-col items-center gap-1 transition-all", activeTab === 'book' ? "text-brand-600" : "text-slate-400 hover:text-slate-600")}
+          >
+            <ClipboardList size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">My Book</span>
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {selectedTier && (
+          <SupportModal 
+            tier={selectedTier} 
+            onClose={() => setSelectedTier(null)}
+            onSubmit={handleSupport}
+          />
+        )}
+        {showSupportOthers && (
+          <SupportOthersModal 
+            onClose={() => setShowSupportOthers(false)}
+            onSubmit={handleSupportOthers}
+          />
+        )}
+        {showSupportersList && (
+          <SupportersListModal 
+            onClose={() => setShowSupportersList(false)}
+            supporters={recentSupports}
+          />
+        )}
+        {showSupportsHistory && (
+          <SupportsHistoryModal 
+            onClose={() => setShowSupportsHistory(false)}
+            history={recentSupports}
+          />
+        )}
+        {showQuickSupportModal && (
+          <QuickSupportModal 
+            onClose={() => setShowQuickSupportModal(false)}
+            onConfirm={handleConfirmQuickSupport}
+          />
+        )}
+        {showSuperModal && (
+          <SuperSupportModal 
+            onClose={() => setShowSuperModal(false)}
+            onSubmit={handleSuperSupport}
+          />
+        )}
+        {selectedCandidate && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedCandidate(null)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-8 bg-brand-600 text-white relative">
+                <button onClick={() => setSelectedCandidate(null)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center text-white font-bold text-4xl">
+                    {selectedCandidate.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-3xl">{selectedCandidate.name}</h3>
+                    <p className="text-white/80 font-bold uppercase tracking-widest text-sm">{selectedCandidate.profession}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-8 space-y-6">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Яагаад сонгогдох ёстой вэ?</h4>
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <p className="text-slate-700 leading-relaxed italic">"{selectedCandidate.description}"</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-2xl font-bold text-slate-900">{selectedCandidate.votes}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Нийт санал</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                    <p className="text-lg font-bold text-slate-900">{selectedCandidate.phone.replace(/(\d{4})(\d{4})/, '$1-****')}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Холбоо барих</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    handleVoteCandidate(selectedCandidate.id);
+                    setSelectedCandidate(null);
+                  }}
+                  className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all"
+                >
+                  Санал өгөх
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {showIntro && (
+          <IntroModal 
+            onClose={() => setShowIntro(false)}
+            onComplete={handleIntroComplete}
+          />
+        )}
+        {qpayInvoice && (
+          <QPayModal 
+            invoice={qpayInvoice}
+            onClose={() => setQpayInvoice(null)}
+            onSuccess={() => {
+              if (onPaymentSuccess) onPaymentSuccess();
+              setQpayInvoice(null);
+            }}
+          />
+        )}
+        {selectedTask && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+            onClick={() => setSelectedTask(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="font-display font-bold text-xl text-slate-900">Даалгаврын дэлгэрэнгүй</h3>
+                <button onClick={() => setSelectedTask(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                  <X size={20} className="text-slate-500" />
+                </button>
+              </div>
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-2xl">
+                    {selectedTask.name.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xl">{selectedTask.name}</h4>
+                    <p className="text-sm text-slate-400 font-medium">{selectedTask.timestamp?.toDate().toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <p className="text-slate-700 leading-relaxed">{selectedTask.description}</p>
+                  </div>
+
+                  {selectedTask.imageUrl && (
+                    <div className="rounded-2xl overflow-hidden border border-slate-100">
+                      <img 
+                        src={selectedTask.imageUrl} 
+                        alt="Task" 
+                        className="w-full h-auto object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                      <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest mb-1">Дэмжлэг</p>
+                      <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedTask.supportAmount || 0)}</p>
+                    </div>
+                    <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100">
+                      <p className="text-[10px] text-brand-600 font-bold uppercase tracking-widest mb-1">Төлөв</p>
+                      <p className="text-xl font-bold text-brand-700 capitalize">{selectedTask.status}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 pt-6 border-t border-slate-100">
+                  <button 
+                    onClick={() => handleLikeTask(selectedTask.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-bold hover:bg-emerald-100 transition-colors"
+                  >
+                    <ThumbsUp size={18} />
+                    {selectedTask.likes || 0} Like
+                  </button>
+                  <button 
+                    onClick={() => handleDislikeTask(selectedTask.id)}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 rounded-xl font-bold hover:bg-rose-100 transition-colors"
+                  >
+                    <ThumbsDown size={18} />
+                    {selectedTask.dislikes || 0} Dislike
+                  </button>
+                </div>
+
+                {selectedTask.status === 'pending' ? (
+                  <button 
+                    onClick={() => {
+                      handleTakeTask(selectedTask);
+                      setSelectedTask(null);
+                    }}
+                    className="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-brand-600/20 hover:bg-brand-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Play size={20} fill="currentColor" />
+                    Take Task
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setActiveTaskForChat(selectedTask);
+                      setSelectedTask(null);
+                    }}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-lg shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                  >
+                    <MessageSquare size={20} />
+                    Ярилцах
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {selectedCitizen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+            onClick={() => setSelectedCitizen(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 bg-brand-600 text-white flex items-center justify-between">
+                <h3 className="font-display font-bold text-xl">Иргэний мэдээлэл</h3>
+                <button onClick={() => setSelectedCitizen(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-8 space-y-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-24 h-24 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-4xl mb-4 border-4 border-white shadow-lg">
+                    {selectedCitizen.name.charAt(0)}
+                  </div>
+                  <h4 className="font-bold text-slate-900 text-2xl mb-1">{selectedCitizen.name}</h4>
+                  <p className="text-brand-600 font-bold text-sm uppercase tracking-widest mb-4">Идэвхтэй иргэн</p>
+                  
+                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-slate-500 text-sm font-medium">
+                    <Phone size={14} />
+                    {selectedCitizen.phone.replace(/(\d{4})(\d{4})/, '$1-****')}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100 text-center">
+                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-widest mb-2">Нийт дэмжлэг</p>
+                    <p className="text-3xl font-bold text-emerald-700">{formatCurrency(selectedCitizen.totalAmount || selectedCitizen.amount || 0)}</p>
+                    <div className="flex items-center justify-center gap-4 mt-2">
+                      <p className="text-[10px] text-emerald-500 font-medium">Бүртгүүлсэн: {selectedCitizen.timestamp?.toDate().toLocaleDateString()}</p>
+                      {selectedCitizen.supportCount > 1 && (
+                        <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">{selectedCitizen.supportCount} удаа дэмжсэн</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedCitizen.businessInfo && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Бизнесийн танилцуулга</p>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 italic text-slate-600 text-sm leading-relaxed">
+                      "{selectedCitizen.businessInfo}"
+                    </div>
+                  </div>
+                )}
+
+                {selectedCitizen.message && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Захисан үг</p>
+                    <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100 text-brand-700 text-sm leading-relaxed">
+                      {selectedCitizen.message}
+                    </div>
+                  </div>
+                )}
+
+                <button 
+                  onClick={() => setSelectedCitizen(null)}
+                  className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                >
+                  Хаах
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+        {activeTaskForChat && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" onClick={() => setActiveTaskForChat(null)}>
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-3xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 bg-brand-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/20 rounded-2xl">
+                    <ClipboardList size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-xl line-clamp-1">{activeTaskForChat.name}</h3>
+                    <p className="text-white/70 text-xs font-bold uppercase tracking-widest">Даалгаврын хэлэлцүүлэг</p>
+                  </div>
+                </div>
+                <button onClick={() => setActiveTaskForChat(null)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-grow overflow-y-auto p-6 space-y-6 bg-slate-50 scrollbar-hide">
+                {chatMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
+                    <div className="p-4 bg-white rounded-full shadow-sm">
+                      <MessageSquare size={32} />
+                    </div>
+                    <p className="text-sm font-medium">Мэдээлэл оруулж эхэлнэ үү...</p>
+                  </div>
+                ) : (
+                  chatMessages.map((msg) => (
+                    <div key={msg.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="p-4 flex items-center justify-between border-b border-slate-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-xs">
+                            {msg.senderName.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">{msg.senderName}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                              {msg.timestamp?.toDate().toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {msg.imageUrl && (
+                        <div className="w-full">
+                          <img src={msg.imageUrl} alt="Post" className="w-full h-auto object-cover" referrerPolicy="no-referrer" />
+                        </div>
+                      )}
+                      
+                      <div className="p-4">
+                        <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                      </div>
+                      
+                      <div className="px-4 py-3 bg-slate-50 flex items-center gap-4">
+                        <button 
+                          onClick={() => handleLikeMessage(msg.id)}
+                          className="flex items-center gap-2 text-slate-400 hover:text-brand-600 transition-colors group"
+                        >
+                          <ThumbsUp size={16} className="group-hover:scale-110 transition-transform" />
+                          <span className="text-xs font-bold">{msg.likes || 0}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="p-6 bg-white border-t border-slate-100 space-y-4">
+                {chatImage && (
+                  <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-slate-200">
+                    <img src={chatImage} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <button 
+                      onClick={() => setChatImage(null)}
+                      className="absolute top-1 right-1 p-1 bg-rose-500 text-white rounded-lg shadow-lg"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <label className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 transition-all cursor-pointer">
+                    <ImageIcon size={20} />
+                    <input type="file" accept="image/*" onChange={handleChatImageUpload} className="hidden" />
+                  </label>
+                  <textarea 
+                    value={chatMessageInput}
+                    onChange={(e) => setChatMessageInput(e.target.value)}
+                    placeholder="Мэдээлэл оруулна уу..."
+                    rows={1}
+                    className="flex-grow px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:border-brand-500 outline-none text-sm resize-none"
+                  />
+                  <button 
+                    onClick={handleSendMessage}
+                    disabled={!chatMessageInput.trim() && !chatImage}
+                    className="p-4 bg-brand-600 text-white rounded-2xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-600/20 disabled:opacity-50"
+                  >
+                    <Send size={20} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+        {/* Ask Circle */}
+        <AnimatePresence>
+          {showAskMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              className="fixed inset-0 z-[150] bg-slate-50 flex flex-col"
+            >
+                  <div className="p-6 bg-brand-600 text-white flex justify-between items-center shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-white/20 rounded-xl">
+                        <AskIcon size={24} />
+                      </div>
+                      <h3 className="font-display font-bold text-2xl">Ask Circle</h3>
+                    </div>
+                    <button 
+                      onClick={() => setShowAskMenu(false)} 
+                      className="p-3 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="flex-grow overflow-y-auto p-6 space-y-8 max-w-2xl mx-auto w-full">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowHelpForm(true)}
+                        className="p-8 bg-white rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center text-center gap-4 group hover:border-amber-200 transition-all"
+                      >
+                        <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                          <HelpCircle size={40} />
+                        </div>
+                        <div>
+                          <h4 className="font-display font-bold text-xl text-slate-900">Ask For Help</h4>
+                          <p className="text-slate-500 text-sm mt-1">Танд тусламж хэрэгтэй байна уу?</p>
+                        </div>
+                        <div className="mt-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-full text-xs font-bold uppercase tracking-widest">
+                          20,000₮
+                        </div>
+                      </motion.button>
+
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setShowSuggestionForm(true)}
+                        className="p-8 bg-white rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center text-center gap-4 group hover:border-blue-200 transition-all"
+                      >
+                        <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <MessageCircle size={40} />
+                        </div>
+                        <div>
+                          <h4 className="font-display font-bold text-xl text-slate-900">Feedback</h4>
+                          <p className="text-slate-500 text-sm mt-1">Санал хүсэлт илгээх</p>
+                        </div>
+                        <div className="mt-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold uppercase tracking-widest">
+                          Үнэгүй
+                        </div>
+                      </motion.button>
+                    </div>
+
+                    {/* Gift Management - Admin only */}
+                    {isAdmin && (
+                      <div className="bg-white rounded-3xl shadow-xl border border-amber-100 overflow-hidden">
+                        <div className="p-5 bg-gradient-to-r from-amber-400 to-orange-500 flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-white">
+                            <Gift size={20} />
+                            <h5 className="font-bold text-lg">Бэлэг удирдах</h5>
+                            {gifts.length > 0 && <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">+{gifts.length}</span>}
+                          </div>
+                          <button onClick={() => setShowGiftAddForm(v => !v)}
+                            className="flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full text-sm font-bold transition-colors">
+                            <Plus size={14} /> Нэмэх
+                          </button>
+                        </div>
+
+                        {showGiftAddForm && (
+                          <div className="p-5 space-y-4 border-b border-amber-50">
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Бэлгийн нэр</label>
+                              <input
+                                type="text"
+                                value={giftForm.name}
+                                onChange={e => setGiftForm({...giftForm, name: e.target.value})}
+                                placeholder="Жишээ: Үнэгүй Website хийлгэх эрхийн бичиг"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-400 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Авах эрхтэй хүн</label>
+                              <div className="space-y-2">
+                                {[
+                                  { value: 'any', label: 'Хэн ч авч болно' },
+                                  { value: '1m', label: '1,000,000₮ дээш дэмжлэг үзүүлсэн хүн' },
+                                  { value: 'custom', label: 'Өөр үнийн дүн' },
+                                ].map(opt => (
+                                  <label key={opt.value} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${giftForm.eligibility === opt.value ? 'border-amber-400 bg-amber-50' : 'border-slate-200 hover:border-amber-200'}`}>
+                                    <input type="radio" name="eligibility" value={opt.value}
+                                      checked={giftForm.eligibility === opt.value}
+                                      onChange={e => setGiftForm({...giftForm, eligibility: e.target.value})}
+                                      className="accent-amber-500" />
+                                    <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              {giftForm.eligibility === 'custom' && (
+                                <input
+                                  type="number"
+                                  value={giftForm.customAmount}
+                                  onChange={e => setGiftForm({...giftForm, customAmount: e.target.value})}
+                                  placeholder="Хамгийн бага дүн (₮)"
+                                  className="mt-2 w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-400 text-sm"
+                                />
+                              )}
+                            </div>
+                            <div className="flex gap-3">
+                              <button onClick={() => setShowGiftAddForm(false)}
+                                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 text-sm font-medium hover:bg-slate-50">
+                                Цуцлах
+                              </button>
+                              <button onClick={handleGiftAdd} disabled={!giftForm.name.trim()}
+                                className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-1">
+                                <Check size={14} /> Хадгалах
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Gift list */}
+                        <div className="p-5 space-y-2">
+                          {gifts.length === 0 ? (
+                            <p className="text-slate-400 text-sm text-center py-4">Бэлэг байхгүй байна</p>
+                          ) : gifts.map((g, i) => (
+                            <div key={g.id} className="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
+                              <span className="text-xl">🎁</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm text-slate-800 truncate">{g.name}</p>
+                                <p className="text-xs text-slate-400">
+                                  {g.eligibility === 'any' ? 'Хэн ч авч болно' : `${Number(g.minAmount).toLocaleString()}₮ дээш`}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="bg-white p-8 rounded-3xl shadow-lg border border-slate-100">
+                      <h5 className="font-bold text-slate-900 mb-6 flex items-center gap-2">
+                        <TrendingUp size={18} className="text-brand-600" />
+                        Тойргийн мэдээлэл
+                      </h5>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="bg-slate-50 p-6 rounded-2xl text-center border border-slate-100">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Нийт Тусламж</p>
+                          <p className="text-3xl font-bold text-slate-900">{totalHelpRequests}</p>
+                        </div>
+                        <div className="bg-slate-50 p-6 rounded-2xl text-center border border-slate-100">
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Нийт Санал Хүсэлт</p>
+                          <p className="text-3xl font-bold text-slate-900">{totalSuggestions}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-8 bg-white border-t border-slate-100 text-center">
+                    <p className="text-slate-400 text-sm font-medium italic">"Бид хамтдаа илүү хүчтэй"</p>
+                  </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="fixed bottom-24 right-6 z-[100]">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowAskMenu(!showAskMenu)}
+            className={cn(
+              "w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all relative",
+              showAskMenu ? "bg-slate-900 text-white rotate-45" : "bg-brand-600 text-white"
+            )}
+          >
+            <AskIcon size={32} />
+            {newNotification && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white"
+              >
+                +1
+              </motion.div>
+            )}
+          </motion.button>
+        </div>
+
+        {/* Gift Modal */}
+        <AnimatePresence>
+          {showGiftModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ scale: 0.8, y: 30 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.8, y: 30 }}
+                className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl text-center"
+              >
+                {/* Header */}
+                <div className="bg-gradient-to-br from-amber-400 to-orange-500 p-7 relative">
+                  <button onClick={() => setShowGiftModal(false)} className="absolute top-4 right-4 p-1 bg-white/20 hover:bg-white/30 rounded-full">
+                    <X size={18} className="text-white" />
+                  </button>
+                  <motion.div
+                    animate={{ rotate: [0, -15, 15, -15, 15, 0], scale: [1, 1.2, 1] }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                    className="text-5xl mb-2"
+                  >🎁</motion.div>
+                  <h3 className="text-white font-bold text-xl">Г. Жавхлан</h3>
+                  <p className="text-white/80 text-sm">таньд зориулсан тусгай бэлэг</p>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Step: intro */}
+                  {giftStep === 'intro' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                      <p className="text-slate-700 font-medium text-base leading-relaxed">
+                        Би танд гайхалтай бэлэг бэлдсэн байна.<br />
+                        <span className="text-slate-500 text-sm">Та авахад бэлэн үү?</span>
+                      </p>
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                        <p className="text-amber-700 text-sm font-medium">Бэлэг авахын тулд</p>
+                        <p className="text-amber-900 font-bold text-lg">1,000,000₮ ба түүнээс дээш</p>
+                        <p className="text-amber-700 text-sm">дэмжлэг үзүүлсэн байх шаардлагатай</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => setShowGiftModal(false)} className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-500 font-medium hover:bg-slate-50 transition-colors text-sm">
+                          Дараа авна
+                        </button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setGiftStep('phone')}
+                          className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold shadow-lg text-sm">
+                          Бэлэн! 🎉
+                        </motion.button>
+                      </div>
+                      <button onClick={() => setGiftStep('support-first')} className="w-full text-xs text-slate-400 hover:text-amber-500 transition-colors">
+                        Одоо дэмжлэг үзүүлээд бэлэгээ авъя →
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {/* Step: phone */}
+                  {giftStep === 'phone' && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                      <p className="text-slate-700 font-medium text-sm">Дэмжлэг үзүүлэхдээ ашигласан <span className="font-bold text-slate-900">утасны дугаараа</span> оруулна уу</p>
+                      <div>
+                        <input
+                          type="tel"
+                          value={giftPhone}
+                          onChange={e => { setGiftPhone(e.target.value); setGiftPhoneError(''); }}
+                          placeholder="Утасны дугаар"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-400 text-center text-lg font-bold tracking-widest"
+                        />
+                        {giftPhoneError && <p className="text-red-500 text-xs mt-1">{giftPhoneError}</p>}
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={() => setGiftStep('intro')} className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-500 font-medium hover:bg-slate-50 transition-colors text-sm">
+                          Буцах
+                        </button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={handleGiftPhoneCheck}
+                          className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold shadow-lg text-sm">
+                          Шалгах
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step: revealed */}
+                  {giftStep === 'revealed' && (
+                    <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', bounce: 0.5 }} className="space-y-4">
+                      <div className="text-4xl">🎊</div>
+                      <p className="text-slate-500 text-sm font-medium">Таны авах бэлгүүд</p>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {gifts.filter(g => {
+                          const total = recentSupports.filter(s => s.phone === giftPhone.trim()).reduce((sum, s) => sum + (s.amount || 0), 0);
+                          return total >= (g.minAmount || 0);
+                        }).map((g, i) => (
+                          <div key={i} className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-left">
+                            <span className="text-xl">🎁</span>
+                            <span className="text-slate-800 font-bold text-sm">{g.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-slate-500 text-sm">Бидэнтэй холбогдоорой!</p>
+                      <button onClick={() => setShowGiftModal(false)}
+                        className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold shadow-lg">
+                        Баярлалаа! 🙏
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {/* Step: not qualified */}
+                  {giftStep === 'not-qualified' && (
+                    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4">
+                      <div className="text-4xl">😔</div>
+                      <p className="text-slate-700 font-medium text-sm leading-relaxed">
+                        Уучлаарай, таны дэмжлэгийн дүн <span className="font-bold text-slate-900">1,000,000₮</span>-д хүрэхгүй байна.
+                      </p>
+                      <div className="flex gap-3">
+                        <button onClick={() => setGiftStep('phone')} className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-500 font-medium text-sm hover:bg-slate-50">
+                          Буцах
+                        </button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => { setShowGiftModal(false); setSelectedTier('custom'); }}
+                          className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold shadow-lg text-sm">
+                          Одоо дэмжих
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Step: support first */}
+                  {giftStep === 'support-first' && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                      <p className="text-slate-700 text-sm leading-relaxed">
+                        <span className="font-bold text-slate-900">1,000,000₮</span> ба түүнээс дээш дэмжлэг үзүүлсний дараа бэлгээ авах боломжтой.
+                      </p>
+                      <div className="flex gap-3">
+                        <button onClick={() => setGiftStep('intro')} className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-500 font-medium text-sm hover:bg-slate-50">
+                          Буцах
+                        </button>
+                        <motion.button whileTap={{ scale: 0.95 }}
+                          onClick={() => { setShowGiftModal(false); setSelectedTier('custom'); }}
+                          className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-brand-500 to-brand-700 text-white font-bold shadow-lg text-sm">
+                          Дэмжих →
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Gift Edit Modal (Admin only) */}
+        <AnimatePresence>
+          {showGiftEdit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[400] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md"
+            >
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 bg-amber-500 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Pencil size={18} />
+                    <h3 className="font-bold text-lg">Бэлгийн мессеж засах</h3>
+                  </div>
+                  <button onClick={() => setShowGiftEdit(false)} className="p-1 hover:bg-white/20 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <textarea
+                    value={giftEditValue}
+                    onChange={e => setGiftEditValue(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-400 h-32 resize-none text-slate-800"
+                    placeholder="Бэлгийн мессеж..."
+                  />
+                  <button
+                    onClick={() => { setGiftMessage(giftEditValue); setShowGiftEdit(false); }}
+                    disabled={!giftEditValue.trim()}
+                    className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <Check size={18} /> Хадгалах
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Order Modal */}
+        <AnimatePresence>
+          {selectedProduct && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setSelectedProduct(null)}
+            >
+              <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl"
+              >
+                <div className="p-5 bg-gradient-to-r from-brand-500 to-brand-700 text-white flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
+                    <p className="text-white/80 text-sm">{Number(selectedProduct.price).toLocaleString()}₮</p>
+                  </div>
+                  <button onClick={() => setSelectedProduct(null)} className="p-2 hover:bg-white/20 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Order type */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setOrderType('direct')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${orderType === 'direct' ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:border-brand-200'}`}>
+                      <ShoppingBag size={24} className={orderType === 'direct' ? 'text-brand-600' : 'text-slate-400'} />
+                      <span className={`text-sm font-bold ${orderType === 'direct' ? 'text-brand-700' : 'text-slate-500'}`}>Шууд авах</span>
+                    </button>
+                    <button onClick={() => setOrderType('delivery')}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${orderType === 'delivery' ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:border-brand-200'}`}>
+                      <Truck size={24} className={orderType === 'delivery' ? 'text-brand-600' : 'text-slate-400'} />
+                      <span className={`text-sm font-bold ${orderType === 'delivery' ? 'text-brand-700' : 'text-slate-500'}`}>Хүргэлтээр</span>
+                    </button>
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Утасны дугаар</label>
+                    <input type="tel" value={orderForm.phone}
+                      onChange={e => setOrderForm({...orderForm, phone: e.target.value})}
+                      placeholder="Таны утасны дугаар"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-400 text-sm" />
+                  </div>
+
+                  {/* Address (delivery only) */}
+                  {orderType === 'delivery' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block flex items-center gap-1">
+                        <MapPin size={12} /> Гэрийн хаяг
+                      </label>
+                      <textarea value={orderForm.address}
+                        onChange={e => setOrderForm({...orderForm, address: e.target.value})}
+                        placeholder="Дүүрэг, хороо, байр, тоот..."
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-brand-400 text-sm resize-none" />
+                      <p className="text-xs text-brand-600 mt-1 flex items-center gap-1">
+                        <Info size={11} /> Захиалга бидэнд мэдэгдэл болж ирнэ
+                      </p>
+                    </motion.div>
+                  )}
+
+                  <button onClick={handleOrder}
+                    disabled={orderSubmitting || !orderForm.phone || (orderType === 'delivery' && !orderForm.address)}
+                    className="w-full py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-2xl text-sm shadow-lg shadow-brand-600/20 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {orderSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                    {orderType === 'delivery' ? 'Хүргэлт захиалах' : 'Захиалга баталгаажуулах'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Help Form Modal */}
+        <AnimatePresence>
+          {showHelpForm && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+              >
+                <div className="p-6 bg-amber-600 text-white flex justify-between items-center">
+                  <div>
+                    <h3 className="font-display font-bold text-xl">Ask for Help</h3>
+                    <p className="text-amber-100 text-xs">Тус асуухын тулд эхлээд туслах ёстой</p>
+                  </div>
+                  <button onClick={() => setShowHelpForm(false)} className="p-2 hover:bg-white/20 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Нэр</label>
+                    <input 
+                      type="text" 
+                      value={helpForm.name}
+                      onChange={e => setHelpForm({...helpForm, name: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-500"
+                      placeholder="Таны нэр"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Дугаар</label>
+                    <input 
+                      type="tel" 
+                      value={helpForm.phone}
+                      onChange={e => setHelpForm({...helpForm, phone: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-500"
+                      placeholder="Утасны дугаар"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Юу хэрэгтэй вэ?</label>
+                    <textarea 
+                      value={helpForm.content}
+                      onChange={e => setHelpForm({...helpForm, content: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-amber-500 h-32 resize-none"
+                      placeholder="Танд ямар тусламж хэрэгтэй байна вэ?"
+                    />
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-2xl flex justify-between items-center border border-amber-100">
+                    <span className="text-sm font-bold text-amber-700">Төлбөр</span>
+                    <span className="text-lg font-bold text-amber-700">20,000₮</span>
+                  </div>
+                  <button 
+                    onClick={handleAskHelp}
+                    disabled={isSubmitting || !helpForm.name || !helpForm.phone || !helpForm.content}
+                    className="w-full py-4 bg-amber-600 text-white rounded-2xl font-bold text-lg hover:bg-amber-700 transition-all shadow-xl shadow-amber-600/20 disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Уншиж байна..." : "Төлөх"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Suggestion Form Modal */}
+        <AnimatePresence>
+          {showSuggestionForm && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+              >
+                <div className="p-6 bg-blue-600 text-white flex justify-between items-center">
+                  <div>
+                    <h3 className="font-display font-bold text-xl">Санал Хүсэлт Форм</h3>
+                    <p className="text-blue-100 text-xs">Бидэнд санал хүсэлтээ илгээнэ үү</p>
+                  </div>
+                  <button onClick={() => setShowSuggestionForm(false)} className="p-2 hover:bg-white/20 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Нэр</label>
+                    <input 
+                      type="text" 
+                      value={suggestionForm.name}
+                      onChange={e => setSuggestionForm({...suggestionForm, name: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500"
+                      placeholder="Таны нэр"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Дугаар</label>
+                    <input 
+                      type="tel" 
+                      value={suggestionForm.phone}
+                      onChange={e => setSuggestionForm({...suggestionForm, phone: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500"
+                      placeholder="Утасны дугаар"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Миний Хүсэлт</label>
+                    <textarea 
+                      value={suggestionForm.content}
+                      onChange={e => setSuggestionForm({...suggestionForm, content: e.target.value})}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 h-32 resize-none"
+                      placeholder="Таны санал хүсэлт..."
+                    />
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-2xl flex justify-between items-center border border-blue-100">
+                    <span className="text-sm font-bold text-blue-700">Хүсэлт Илгээх</span>
+                    <span className="text-lg font-bold text-emerald-600 uppercase tracking-widest">Үнэгүй</span>
+                  </div>
+                  <button 
+                    onClick={handleSendSuggestion}
+                    disabled={isSubmitting || !suggestionForm.name || !suggestionForm.phone || !suggestionForm.content}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Уншиж байна..." : "Хүсэлт Илгээх"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CRA Rating Modal */}
+        <AnimatePresence>
+          {showCRARatingModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setShowCRARatingModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="p-6 bg-amber-500 text-white flex items-center justify-between">
+                  <h3 className="font-display font-bold text-xl">
+                    {craRatingType === 'free' ? 'CRA Free Rating' : 'CRA Paid Rating'}
+                  </h3>
+                  <button onClick={() => setShowCRARatingModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-8 space-y-8">
+                  {craRatingType === 'paid' && ratingStep === 'payment' ? (
+                    <div className="space-y-6 text-center">
+                      <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
+                        <Zap className="text-amber-500" size={40} />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-xl text-slate-900">Төлбөр төлөх</h4>
+                        <p className="text-slate-500 text-sm">
+                          CRA Paid үнэлгээ өгөхөд 5,000₮ төлөх шаардлагатай. Төлбөр төлсний дараа үнэлгээ өгөх хэсэг нээгдэнэ.
+                        </p>
+                      </div>
+                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex justify-between items-center">
+                        <span className="text-sm font-bold text-amber-700">Төлөх дүн</span>
+                        <span className="text-xl font-bold text-amber-700">5,000₮</span>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            setIsSubmitting(true);
+                            const response = await axios.post('/api/qpay/invoice', {
+                              amount: 5000,
+                              description: `CRA Paid Rating`,
+                            });
+                            setQpayInvoice(response.data);
+                            setOnPaymentSuccess(() => () => setRatingStep('rating'));
+                          } catch (error) {
+                            console.error("QPay invoice creation failed:", error);
+                            alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+                          } finally {
+                            setIsSubmitting(false);
+                          }
+                        }}
+                        className="w-full py-4 bg-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all"
+                      >
+                        Төлбөр төлөх
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center space-y-2">
+                        <p className="text-slate-500 text-sm">Үнэлгээг 1-100 хүртэлх оноогоор өгнө үү.</p>
+                        <div className="text-5xl font-display font-bold text-amber-500">{craRatingValue}</div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="100" 
+                          value={craRatingValue} 
+                          onChange={(e) => setCRARatingValue(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                        />
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          <span>1 (Муу)</span>
+                          <span>100 (Маш сайн)</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleGiveCRARating}
+                        disabled={isSubmitting}
+                        className="w-full py-4 bg-amber-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/20 hover:bg-amber-600 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isSubmitting ? 'Илгээж байна...' : 'Үнэлгээ өгөх'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CTR Rating Modal */}
+        <AnimatePresence>
+          {showCTRRatingModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setShowCTRRatingModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="p-6 bg-emerald-500 text-white flex items-center justify-between">
+                  <h3 className="font-display font-bold text-xl">
+                    {ctrRatingType === 'free' ? 'CTR Free Rating' : 'CTR Paid Rating'}
+                  </h3>
+                  <button onClick={() => setShowCTRRatingModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-8 space-y-8">
+                  {ctrRatingType === 'paid' && ratingStep === 'payment' ? (
+                    <div className="space-y-6 text-center">
+                      <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+                        <Zap className="text-emerald-500" size={40} />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="font-bold text-xl text-slate-900">Төлбөр төлөх</h4>
+                        <p className="text-slate-500 text-sm">
+                          CTR Paid үнэлгээ өгөхөд 5,000₮ төлөх шаардлагатай. Төлбөр төлсний дараа үнэлгээ өгөх хэсэг нээгдэнэ.
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex justify-between items-center">
+                        <span className="text-sm font-bold text-emerald-700">Төлөх дүн</span>
+                        <span className="text-xl font-bold text-emerald-700">5,000₮</span>
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          try {
+                            setIsSubmitting(true);
+                            const response = await axios.post('/api/qpay/invoice', {
+                              amount: 5000,
+                              description: `CTR Paid Rating`,
+                            });
+                            setQpayInvoice(response.data);
+                            setOnPaymentSuccess(() => () => setRatingStep('rating'));
+                          } catch (error) {
+                            console.error("QPay invoice creation failed:", error);
+                            alert("Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.");
+                          } finally {
+                            setIsSubmitting(false);
+                          }
+                        }}
+                        className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all"
+                      >
+                        Төлбөр төлөх
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center space-y-2">
+                        <p className="text-slate-500 text-sm">Үнэлгээг 1-100 хүртэлх оноогоор өгнө үү.</p>
+                        <div className="text-5xl font-display font-bold text-emerald-500">{ctrRatingValue}</div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <input 
+                          type="range" 
+                          min="1" 
+                          max="100" 
+                          value={ctrRatingValue} 
+                          onChange={(e) => setCTRRatingValue(parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                        />
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                          <span>1 (Муу)</span>
+                          <span>100 (Маш сайн)</span>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={handleGiveCTRRating}
+                        disabled={isSubmitting}
+                        className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isSubmitting ? 'Илгээж байна...' : 'Үнэлгээ өгөх'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CRC Report Modal */}
+        <AnimatePresence>
+          {showCRCReportModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setShowCRCReportModal(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className={cn(
+                  "p-6 text-white flex items-center justify-between",
+                  crcReportType === 'good' ? "bg-emerald-500" : "bg-rose-500"
+                )}>
+                  <h3 className="font-display font-bold text-xl">
+                    {crcReportType === 'good' ? 'Good Report' : 'Bad Report'}
+                  </h3>
+                  <button onClick={() => setShowCRCReportModal(false)} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 overflow-y-auto space-y-4 scrollbar-hide">
+                  <p className="text-slate-500 text-sm text-center mb-4">Тайлангийн шалтгааныг сонгоно уу.</p>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    {crcReportType === 'good' ? (
+                      <>
+                        {[
+                          { label: 'Энэ сайн залуу', credit: 100 },
+                          { label: 'Энэ хүн амласандаа хүрдэг', credit: 80 },
+                          { label: 'Энэ хүн шударга', credit: 70 },
+                          { label: 'Энэ хүн бусдад тусалдаг', credit: 90 },
+                          { label: 'Энэ хүн хурдан, найдвартай', credit: 85 },
+                          { label: 'Энэ хүн үүргээ сайн биелүүлдэг', credit: 75 },
+                          { label: 'Энэ хүн итгэл даахуйц', credit: 95 },
+                          { label: 'Энэ хүн зөв хандлагатай', credit: 60 },
+                          { label: 'Энэ хүн чанартай ажилладаг', credit: 88 },
+                          { label: 'Энэ хүн хариуцлагатай', credit: 92 },
+                          { label: 'Итгэлтэй хүн', credit: 100 },
+                          { label: 'Сайн ажилласан', credit: 80 },
+                          { label: 'Зөв хандлагатай', credit: 70 },
+                          { label: 'Бусдад тусалсан', credit: 90 },
+                          { label: 'Шударга', credit: 85 }
+                        ].map((opt, i) => (
+                          <button 
+                            key={i}
+                            onClick={() => handleGiveCRCReport(opt.label, opt.credit)}
+                            className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-all group"
+                          >
+                            <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                            <span className="font-bold text-emerald-600">+{opt.credit}</span>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {[
+                          { label: 'Энэ муу залуу', credit: -100 },
+                          { label: 'Энэ хүн худал хэлдэг', credit: -90 },
+                          { label: 'Энэ хүн амлалтаа биелүүлдэггүй', credit: -85 },
+                          { label: 'Энэ хүн бусдыг хуурсан', credit: -120 },
+                          { label: 'Энэ хүн хариуцлагагүй', credit: -80 },
+                          { label: 'Энэ хүн удаа дараа алдаа гаргасан', credit: -70 },
+                          { label: 'Энэ хүн итгэл эвдсэн', credit: -110 },
+                          { label: 'Энэ хүн бүдүүлэг ханддаг', credit: -60 },
+                          { label: 'Энэ хүн чанаргүй ажилласан', credit: -75 },
+                          { label: 'Энэ хүн муу нөлөөтэй', credit: -95 },
+                          { label: 'Итгэл эвдсэн', credit: -100 },
+                          { label: 'Муу ажилласан', credit: -80 },
+                          { label: 'Бүдүүлэг хандсан', credit: -70 },
+                          { label: 'Бусдад саад болсон', credit: -90 },
+                          { label: 'Худалч', credit: -85 }
+                        ].map((opt, i) => (
+                          <button 
+                            key={i}
+                            onClick={() => handleGiveCRCReport(opt.label, opt.credit)}
+                            className="flex items-center justify-between p-4 bg-rose-50 border border-rose-100 rounded-2xl hover:bg-rose-100 transition-all group"
+                          >
+                            <span className="text-sm font-medium text-slate-700">{opt.label}</span>
+                            <span className="font-bold text-rose-600">{opt.credit}</span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[200] bg-white/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+            <p className="font-bold text-brand-900">Боловсруулж байна...</p>
+          </div>
+        </div>
+      )}
+      </div>
+    </ErrorBoundary>
+  );
+}
