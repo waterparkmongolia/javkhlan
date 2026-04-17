@@ -537,16 +537,6 @@ const SplashScreen = () => {
         <img src="/logo-blue.png.png" alt="Logo" className="w-44 h-44 object-contain" />
       </motion.div>
 
-      {/* Name */}
-      <motion.p
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        className="text-2xl font-bold tracking-widest text-white uppercase"
-        style={{ letterSpacing: '0.15em' }}
-      >
-        Г. Жавхлан
-      </motion.p>
     </motion.div>
   );
 };
@@ -2444,9 +2434,7 @@ export default function App() {
       setGiftStep('not-qualified');
     }
   };
-  const [showIntro, setShowIntro] = useState(() => {
-    return !localStorage.getItem('intro_completed');
-  });
+  const [showIntro, setShowIntro] = useState(false);
   const [showTierMenu, setShowTierMenu] = useState(false);
   const [qpayInvoice, setQpayInvoice] = useState<any>(null);
   const [onPaymentSuccess, setOnPaymentSuccess] = useState<(() => void) | null>(null);
