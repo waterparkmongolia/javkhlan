@@ -1694,6 +1694,16 @@ export default function App() {
   const [showMyProfile, setShowMyProfile] = useState(false);
   const [showMyMenu, setShowMyMenu] = useState(false);
   const [showAppStore, setShowAppStore] = useState(false);
+  const [installedApps, setInstalledApps] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('installed_apps') || '[]'); } catch { return []; }
+  });
+  const toggleInstallApp = (id: string) => {
+    setInstalledApps(prev => {
+      const next = prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id];
+      localStorage.setItem('installed_apps', JSON.stringify(next));
+      return next;
+    });
+  };
   const [showZarlaga, setShowZarlaga] = useState(false);
   const [showCyberCity, setShowCyberCity] = useState(false);
   const [cyberRegistrations, setCyberRegistrations] = useState<any[]>([]);
@@ -5668,16 +5678,24 @@ export default function App() {
                   { id: 'magic'      as AppTab, label: 'Magic Word',         Icon: Wand2       , bg: 'linear-gradient(135deg,#0284c7,#38bdf8)' },
                   { id: 'zavgui'     as AppTab, label: 'Завгүй',             Icon: Briefcase   , bg: 'linear-gradient(135deg,#0ea5e9,#0284c7)' },
                 ]).map((app) => (
-                  <motion.button key={app.id}
-                    whileTap={{ scale: 0.88 }}
-                    onClick={() => { setShowAppStore(false); setShowPageSelector(false); setActiveTab(app.id); if (app.id === 'shop') { setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } }}
-                    className="flex flex-col items-center gap-1.5">
-                    <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md shadow-sky-200/60"
+                  <div key={app.id} className="flex flex-col items-center gap-1.5">
+                    <motion.button
+                      whileTap={{ scale: 0.88 }}
+                      onClick={() => { setShowAppStore(false); setShowPageSelector(false); setActiveTab(app.id); if (app.id === 'shop') { setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } }}
+                      className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md shadow-sky-200/60"
                       style={{ background: app.bg }}>
                       <app.Icon size={28} className="text-white" />
-                    </div>
+                    </motion.button>
                     <p className="text-slate-700 text-[10px] font-semibold text-center leading-tight">{app.label}</p>
-                  </motion.button>
+                    <button
+                      onClick={() => toggleInstallApp(app.id)}
+                      className={cn('px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all',
+                        installedApps.includes(app.id)
+                          ? 'bg-sky-100 text-sky-600'
+                          : 'bg-sky-500 text-white')}>
+                      {installedApps.includes(app.id) ? '✓ Суулгасан' : '+ Суулгах'}
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -14840,10 +14858,51 @@ export default function App() {
                     ))}
                   </div>
                   {/* Tab content */}
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-30">
-                    <span className="text-4xl">{profileBotTab === 'apps' ? '📱' : profileBotTab === 'income' ? '💰' : '💸'}</span>
-                    <p className="text-white text-sm font-bold">{profileBotTab === 'apps' ? 'Апп байхгүй' : profileBotTab === 'income' ? 'Орлого байхгүй' : 'Зарлага байхгүй'}</p>
-                  </div>
+                  {profileBotTab === 'apps' ? (
+                    installedApps.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-30">
+                        <span className="text-4xl">📱</span>
+                        <p className="text-white text-sm font-bold">Апп суулгаагүй байна</p>
+                        <p className="text-white/50 text-xs">AppStore-оос суулгана уу</p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto p-5">
+                        <div className="grid grid-cols-4 gap-5">
+                          {[
+                            { id: 'citizens',   label: 'Иргэд',           Icon: Users,       bg: 'linear-gradient(135deg,#0284c7,#38bdf8)' },
+                            { id: 'learn',      label: 'Өөрөөр Сур',      Icon: BookOpen,    bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)' },
+                            { id: 'shop',       label: 'Дэлгүүр',         Icon: ShoppingBag, bg: 'linear-gradient(135deg,#0284c7,#7dd3fc)' },
+                            { id: 'membership', label: 'Get Membership',   Icon: Crown,       bg: 'linear-gradient(135deg,#0369a1,#38bdf8)' },
+                            { id: 'website',    label: 'Website',          Icon: Globe,       bg: 'linear-gradient(135deg,#0ea5e9,#bae6fd)' },
+                            { id: 'battle',     label: 'Ялагч Тодруулах', Icon: Sword,       bg: 'linear-gradient(135deg,#0284c7,#0ea5e9)' },
+                            { id: 'lucky_draw', label: 'Азтан Тодруулах', Icon: Trophy,      bg: 'linear-gradient(135deg,#0369a1,#0284c7)' },
+                            { id: 'lottery',    label: 'Сугалаа',          Icon: Ticket,      bg: 'linear-gradient(135deg,#0ea5e9,#38bdf8)' },
+                            { id: 'askify',     label: 'Askify',           Icon: Brain,       bg: 'linear-gradient(135deg,#0284c7,#0369a1)' },
+                            { id: 'birthday',   label: 'Төрсөн Өдөр',     Icon: Cake,        bg: 'linear-gradient(135deg,#38bdf8,#7dd3fc)' },
+                            { id: 'games',      label: 'Games',            Icon: Gamepad2,    bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)' },
+                            { id: 'magic',      label: 'Magic Word',       Icon: Wand2,       bg: 'linear-gradient(135deg,#0284c7,#38bdf8)' },
+                            { id: 'zavgui',     label: 'Завгүй',           Icon: Briefcase,   bg: 'linear-gradient(135deg,#0ea5e9,#0284c7)' },
+                          ].filter(a => installedApps.includes(a.id)).map(app => (
+                            <motion.button key={app.id}
+                              whileTap={{ scale: 0.88 }}
+                              onClick={e => { e.stopPropagation(); setShowCyberMall(false); setShowPageSelector(false); setActiveTab(app.id as AppTab); if (app.id === 'shop') { setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } }}
+                              className="flex flex-col items-center gap-1.5">
+                              <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md"
+                                style={{ background: app.bg }}>
+                                <app.Icon size={28} className="text-white" />
+                              </div>
+                              <p className="text-white/80 text-[10px] font-semibold text-center leading-tight">{app.label}</p>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-30">
+                      <span className="text-4xl">{profileBotTab === 'income' ? '💰' : '💸'}</span>
+                      <p className="text-white text-sm font-bold">{profileBotTab === 'income' ? 'Орлого байхгүй' : 'Зарлага байхгүй'}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
