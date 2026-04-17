@@ -5521,7 +5521,7 @@ export default function App() {
             </motion.button>
 
             {/* ── 3×4 grid (80% height, 12 items) ── */}
-            <div className="flex-1 grid grid-cols-3 grid-rows-4">
+            <div className="grid grid-cols-3">
               {([
                 { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setTimeout(() => setShowCyberMall(true), 200); } },
                 { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
@@ -5538,7 +5538,7 @@ export default function App() {
               ]).map((item, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: item.delay, type: 'spring', stiffness: 280, damping: 28 }}
-                  className={cn('relative flex flex-col items-center justify-center overflow-hidden border-white/5',
+                  className={cn('relative aspect-square flex flex-col items-center justify-center overflow-hidden border-white/5',
                     i % 3 !== 2 ? 'border-r' : '', i < 9 ? 'border-b' : '')}
                   style={{ background: item.bg }}
                   onClick={item.onClick}>
@@ -13382,10 +13382,12 @@ export default function App() {
                               <p className="text-slate-900 font-black text-xl">{storeProfiles[`service_center__${scRoomNumber}`]?.storeName || `Өрөө ${scRoomNumber}`}</p>
                               {floorDirection && <p className="text-purple-600 text-sm font-bold mt-0.5">{floorDirection}</p>}
                             </div>
+                            {appUser?.username === 'javkhlantai' && (
                             <button onClick={e => { e.stopPropagation(); setScEditFloorValue(floorDirection); setScEditFloor(true); }}
                               className="shrink-0 mt-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold">
                               ✏️ Засах
                             </button>
+                            )}
                           </div>
                         </div>
                         <div className="px-6 py-4 flex items-center justify-between">
@@ -14141,10 +14143,12 @@ export default function App() {
                               <p className="text-slate-900 font-black text-xl">{storeProfiles[`other_mall__${omRoomNumber}`]?.storeName || `Тоот ${omRoomNumber}`}</p>
                               {floorDirection && <p className="text-emerald-600 text-sm font-bold mt-0.5">{floorDirection}</p>}
                             </div>
+                            {appUser?.username === 'javkhlantai' && (
                             <button onClick={e => { e.stopPropagation(); setOmEditFloorValue(floorDirection); setOmEditFloor(true); }}
                               className="shrink-0 mt-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold">
                               ✏️ Засах
                             </button>
+                            )}
                           </div>
                         </div>
                         <div className="px-6 py-4 flex items-center justify-between">
@@ -14256,7 +14260,7 @@ export default function App() {
                           </div>
                         </div>
                         {/* Horizontal page carousel */}
-                        <AnimatePresence initial={false} custom={omStorePageDir} mode="wait">
+                        <AnimatePresence initial={false} custom={omStorePageDir} mode="sync">
                           <motion.div
                             key={pageIdx}
                             custom={omStorePageDir}
