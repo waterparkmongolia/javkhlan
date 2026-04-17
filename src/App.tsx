@@ -368,12 +368,12 @@ const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginCli
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[250]"
           />
           <motion.div
             initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed left-0 top-0 bottom-0 w-72 bg-white z-[101] shadow-2xl flex flex-col"
+            className="fixed left-0 top-0 bottom-0 w-72 bg-white z-[251] shadow-2xl flex flex-col"
           >
             {/* Header */}
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -5524,7 +5524,7 @@ export default function App() {
             {/* ── 3×4 grid (80% height, 12 items) ── */}
             <div className="grid grid-cols-3">
               {([
-                { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setTimeout(() => setShowCyberMall(true), 200); } },
+                { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
                 { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
                 { delay: 0.12, icon: '🛎️', sub: 'Service Center', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#2d1657,#4c1d95)', glow: '#a855f720', onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
                 { delay: 0.15, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
@@ -5535,7 +5535,7 @@ export default function App() {
                 { delay: 0.30, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
                 { delay: 0.33, icon: '📱', sub: 'AppStore',   label: 'AppStore',   bg: 'linear-gradient(135deg,#001a1a,#0f4c81)', glow: '#0ea5e920', onClick: () => { setShowPageSelector(false); setShowAppStore(true); } },
                 { delay: 0.36, icon: '☰',  sub: 'Menu',       label: 'My Menu',    bg: 'linear-gradient(135deg,#0a0a1a,#1e1e3f)', glow: '#818cf820', onClick: () => { setShowPageSelector(false); setShowMyMenu(true); } },
-                { delay: 0.39, icon: '👤', sub: 'Profile',    label: 'My Profile', bg: 'linear-gradient(135deg,#1a0a2e,#4c1d95)', glow: '#a78bfa20', onClick: () => { setShowPageSelector(false); setShowMyProfile(true); } },
+                { delay: 0.39, icon: '👤', sub: 'Profile',    label: 'My Profile', bg: 'linear-gradient(135deg,#1a0a2e,#4c1d95)', glow: '#a78bfa20', onClick: () => { setShowPageSelector(false); setCyberMallTab('profile'); setTimeout(() => setShowCyberMall(true), 200); } },
               ]).map((item, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: item.delay, type: 'spring', stiffness: 280, damping: 28 }}
@@ -14745,20 +14745,20 @@ export default function App() {
                 <div className="flex items-center justify-between px-4 pt-3 pb-0">
                   {/* Tabs */}
                   <div className="flex items-end gap-1">
-                    {([
-                      { id: 'mall', label: 'Г. Жавхлан' },
-                      { id: 'sidebar', label: 'Танилцах' },
-                      { id: 'profile', label: 'User Profile' },
-                    ] as const).map(tab => (
-                      <button key={tab.id}
+                    {[
+                      { id: 'mall' as const, label: 'Г. Жавхлан', isSidebar: false },
+                      { id: 'mall' as const, label: 'Танилцах', isSidebar: true },
+                      { id: 'profile' as const, label: 'User Profile', isSidebar: false },
+                    ].map((tab, i) => (
+                      <button key={i}
                         onClick={e => {
                           e.stopPropagation();
-                          if (tab.id === 'sidebar') { setShowSidebar(true); }
+                          if (tab.isSidebar) { setShowSidebar(true); }
                           else { setCyberMallTab(tab.id); }
                         }}
                         className={cn(
                           'px-3 py-2 text-xs font-black rounded-t-xl transition-all border-b-2',
-                          (tab.id !== 'sidebar' && cyberMallTab === tab.id)
+                          !tab.isSidebar && cyberMallTab === tab.id
                             ? 'text-indigo-600 border-indigo-500 bg-indigo-50/60'
                             : 'text-slate-400 border-transparent hover:text-slate-600'
                         )}>
