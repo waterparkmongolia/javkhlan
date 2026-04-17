@@ -5499,11 +5499,11 @@ export default function App() {
             transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[500] flex flex-col overflow-hidden bg-black">
 
-            {/* ── Top: Г. Жавхлан banner (20% height, paywall) ── */}
+            {/* ── Top: Г. Жавхлан banner (flex-1, fills remaining space) ── */}
             <motion.button
               initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 28 }}
-              className="relative w-full flex items-center justify-center overflow-hidden border-b border-white/5"
-              style={{ height: '20%', background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
+              className="relative w-full flex-1 flex items-center justify-center overflow-hidden border-b border-white/5"
+              style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
               onClick={() => setShowGJPaywall(true)}>
               <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, #f59e0b18 0%, transparent 70%)' }} />
               <div className="relative z-10 flex items-center gap-4">
@@ -5521,8 +5521,8 @@ export default function App() {
               <div className="absolute right-5 text-white/15 text-xl">›</div>
             </motion.button>
 
-            {/* ── 3×4 grid (80% height, 12 items) ── */}
-            <div className="grid grid-cols-3">
+            {/* ── 3×4 grid (12 items, aspect-square cells) ── */}
+            <div className="grid grid-cols-3 shrink-0">
               {([
                 { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
                 { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
