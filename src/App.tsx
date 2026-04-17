@@ -14755,36 +14755,15 @@ export default function App() {
             >
               {/* ── Top Navigation ── */}
               <div className="relative z-10 shrink-0 bg-white border-b border-slate-100 shadow-sm">
-                <div className="flex items-center justify-between px-4 pt-3 pb-0">
-                  {/* Tabs */}
-                  <div className="flex items-end gap-1">
-                    {[
-                      { id: 'mall' as const, label: 'Г. Жавхлан' },
-                      { id: 'profile' as const, label: 'My Profile' },
-                    ].map((tab, i) => (
-                      <button key={i}
-                        onClick={e => {
-                          e.stopPropagation();
-                          setCyberMallTab(tab.id);
-                        }}
-                        className={cn(
-                          'px-3 py-2 text-xs font-black rounded-t-xl transition-all border-b-2',
-                          cyberMallTab === tab.id
-                            ? 'text-indigo-600 border-indigo-500 bg-indigo-50/60'
-                            : 'text-slate-400 border-transparent hover:text-slate-600'
-                        )}>
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Right: Гарах */}
+                <div className="flex items-center justify-between px-4 py-2">
                   <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setCyberMallTab('mall'); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); setShowPageSelector(true); }}
-                    className="px-3 py-1.5 mb-1 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
-                    Гарах
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
+                    ‹ Гарах
                   </button>
+                  <div />
                 </div>
                 {/* Floor indicator dots (only in floor/store mode when mall tab active) */}
-                {cyberMallTab === 'mall' && mallMode !== 'chat' && (
+                {mallMode !== 'chat' && (
                   <div className="flex items-center justify-center gap-1.5 py-2">
                     {[1,2,3,4,5].map(f => (
                       <button key={f} onClick={e => { e.stopPropagation(); setMallFloor(f); setMallStoreIndex(0); setMallInStorePage(0); setMallMode('floor'); }}
