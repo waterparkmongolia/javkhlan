@@ -1,6 +1,6 @@
 export type SupportTier = 'starter' | 'star' | 'special' | 'super' | 'sponsor' | 'subscription' | 'custom';
 
-export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy' | 'birthday' | 'friends';
+export type AppTab = 'home' | 'team' | 'support' | 'tasks' | 'citizens' | 'apps' | 'book' | 'shop' | 'membership' | 'website' | 'lucky_draw' | 'lottery' | 'askify' | 'games' | 'magic' | 'zavgui' | 'profile' | 'learn' | 'happy' | 'birthday' | 'friends' | 'battle';
 
 export interface Lottery {
   id: string;
@@ -137,6 +137,21 @@ export interface CompletedWebsite {
   record: string;
   imageUrl: string;
   timestamp: any;
+}
+
+export type HeroType = 'ranged' | 'melee';
+
+export interface BattleUser {
+  uid: string;
+  username: string;
+  name: string;
+  phone?: string;
+  heroType?: HeroType;
+  hp: number;
+  armor: number;
+  attack: number;
+  survivalChance: number;
+  referredBy?: string;
 }
 
 export interface BirthdayEntry {

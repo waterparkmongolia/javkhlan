@@ -101,7 +101,13 @@ import {
   Volume2,
   Briefcase,
   Shuffle,
-  ListOrdered
+  ListOrdered,
+  Sword,
+  Shield as ShieldIcon,
+  HeartPulse,
+  Swords,
+  Link as LinkIcon,
+  Copy
 } from 'lucide-react';
 
 // --- Components ---
@@ -170,7 +176,7 @@ class ErrorBoundary extends React.Component<any, any> {
   }
 }
 
-const Navbar = ({ onBrandClick, onSupportClick, onIntroClick, onMenuClick, appUser, onProfileClick }: { onBrandClick: () => void; onSupportClick: () => void; onIntroClick: () => void; onMenuClick: () => void; appUser: any; onProfileClick: () => void }) => (
+const Navbar = ({ onBrandClick, onBrandDoubleClick, onSupportClick, onIntroClick, onMenuClick, appUser, onProfileClick }: { onBrandClick: () => void; onBrandDoubleClick: () => void; onSupportClick: () => void; onIntroClick: () => void; onMenuClick: () => void; appUser: any; onProfileClick: () => void }) => (
   <nav className="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-4">
     <div className="max-w-5xl mx-auto flex justify-between items-center">
       <div className="flex items-center gap-4">
@@ -180,6 +186,7 @@ const Navbar = ({ onBrandClick, onSupportClick, onIntroClick, onMenuClick, appUs
         <div
           className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={onBrandClick}
+          onDoubleClick={e => { e.preventDefault(); onBrandDoubleClick(); }}
         >
           <img src="/logo-blue.png.png" alt="Г. Жавхлан" className="w-9 h-9 object-contain rounded-lg" />
           <span className="font-display font-bold text-xl tracking-tight">Г. Жавхлан</span>
@@ -191,12 +198,6 @@ const Navbar = ({ onBrandClick, onSupportClick, onIntroClick, onMenuClick, appUs
           className="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors"
         >
           Танилцах
-        </button>
-        <button
-          onClick={onSupportClick}
-          className="bg-brand-600 text-white px-4 py-2 rounded-full text-sm font-semibold hover:bg-brand-700 transition-all shadow-lg shadow-brand-600/20"
-        >
-          Иргэд
         </button>
         <button
           onClick={onProfileClick}
@@ -342,12 +343,14 @@ const ProfileDrawer = ({
   );
 };
 
-const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginClick, onSignOut, onProfileClick, onPageSelect }: { isOpen: boolean; onClose: () => void; activeTab: AppTab; setActiveTab: (tab: AppTab) => void; appUser: any; onLoginClick: () => void; onSignOut: () => void; onProfileClick: () => void; onPageSelect: () => void }) => {
+const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginClick, onSignOut, onProfileClick, onPageSelect, onShopOpen, counts }: { isOpen: boolean; onClose: () => void; activeTab: AppTab; setActiveTab: (tab: AppTab) => void; appUser: any; onLoginClick: () => void; onSignOut: () => void; onProfileClick: () => void; onPageSelect: () => void; onShopOpen?: () => void; counts?: Record<string, number> }) => {
   const menuItems: { id: AppTab; label: string; icon: any }[] = [
+    { id: 'citizens', label: 'Иргэд', icon: Users },
     { id: 'learn', label: 'Өөрөөр Сур', icon: BookOpen },
     { id: 'shop', label: 'Дэлгүүр', icon: ShoppingBag },
     { id: 'membership', label: 'Get Membership', icon: Crown },
     { id: 'website', label: 'Website', icon: Globe },
+    { id: 'battle', label: 'Ялагч Тодруулах', icon: Sword },
     { id: 'lucky_draw', label: 'Азтан Тодруулах', icon: Trophy },
     { id: 'lottery', label: 'Сугалаа', icon: Ticket },
     { id: 'askify', label: 'Askify', icon: Brain },
@@ -356,25 +359,23 @@ const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginCli
     { id: 'magic', label: 'Magic Word', icon: Wand2 },
     { id: 'zavgui', label: 'Завгүй', icon: Briefcase },
   ];
+  const fmtCount = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}К` : `${n}`;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100]"
           />
           <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
+            initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed left-0 top-0 bottom-0 w-72 bg-white z-[101] shadow-2xl flex flex-col"
           >
+            {/* Header */}
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <img src="/logo-blue.png.png" alt="Г. Жавхлан" className="w-8 h-8 object-contain rounded-lg" />
@@ -384,40 +385,43 @@ const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginCli
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
-            <div className="flex-grow overflow-y-auto p-4 space-y-2">
-              <button
-                onClick={() => { onPageSelect(); onClose(); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-medium text-brand-600 bg-brand-50 hover:bg-brand-100"
-              >
-                <Layers size={20} className="text-brand-600" />
-                Хуудас сонгох
-              </button>
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    onClose();
-                  }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-medium",
-                    activeTab === item.id 
-                      ? "bg-brand-50 text-brand-600 shadow-sm shadow-brand-600/5" 
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  )}
-                >
-                  <item.icon size={20} className={activeTab === item.id ? "text-brand-600" : "text-slate-400"} />
-                  {item.label}
-                </button>
-              ))}
+
+            {/* Menu */}
+            <div className="flex-grow overflow-y-auto p-4 space-y-1">
+              {[...menuItems].sort((a, b) => (counts?.[b.id] ?? 0) - (counts?.[a.id] ?? 0)).map((item) => {
+                const isActive = activeTab === item.id;
+                const count = counts?.[item.id];
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id); if (item.id === 'shop') onShopOpen?.(); onClose(); }}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-medium',
+                      isActive ? 'bg-brand-50 text-brand-600 shadow-sm shadow-brand-600/5' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    )}
+                  >
+                    <item.icon size={20} className={isActive ? 'text-brand-600' : 'text-slate-400'} />
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {count !== undefined && count > 0 && (
+                      <span className={cn(
+                        'flex items-center gap-0.5 text-[10px] font-black px-2 py-0.5 rounded-full',
+                        isActive ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'
+                      )}>
+                        <Heart size={9} fill="currentColor" />
+                        {fmtCount(count)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Footer */}
             <div className="p-4 border-t border-slate-100">
               {appUser ? (
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => { onProfileClick(); onClose(); }}
-                    className="flex items-center gap-3 flex-1 min-w-0 hover:bg-slate-50 rounded-2xl p-1 -m-1 transition-colors"
-                  >
+                  <button onClick={() => { onProfileClick(); onClose(); }}
+                    className="flex items-center gap-3 flex-1 min-w-0 hover:bg-slate-50 rounded-2xl p-1 -m-1 transition-colors">
                     <div className="w-10 h-10 rounded-2xl bg-brand-100 flex items-center justify-center shrink-0">
                       <span className="text-brand-600 font-black text-sm">{(appUser.name || appUser.username || '?')[0].toUpperCase()}</span>
                     </div>
@@ -426,7 +430,7 @@ const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginCli
                       <p className="text-slate-400 text-[10px] truncate">@{appUser.username}</p>
                     </div>
                   </button>
-                  <button onClick={onSignOut} className="p-2 hover:bg-rose-50 rounded-xl transition-colors shrink-0" title="Гарах">
+                  <button onClick={onSignOut} className="p-2 hover:bg-rose-50 rounded-xl transition-colors shrink-0">
                     <X size={16} className="text-rose-400" />
                   </button>
                 </div>
@@ -1587,6 +1591,92 @@ const BirthdayView = ({ birthdays, onAddBirthday }: { birthdays: BirthdayEntry[]
   );
 };
 
+// ── Store Rating Stars Display ────────────────────────────────
+const StoreRatingBadge = ({ avg, count, size = 'sm' }: { avg: number; count: number; size?: 'xs' | 'sm' | 'lg' }) => {
+  if (count === 0) return null;
+  const stars = Math.round(avg);
+  const textSize = size === 'xs' ? 'text-[9px]' : size === 'lg' ? 'text-base' : 'text-xs';
+  const starSize = size === 'xs' ? 'text-[10px]' : size === 'lg' ? 'text-xl' : 'text-sm';
+  const countText = size === 'xs' ? 'text-[9px]' : 'text-[11px]';
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <div className="flex items-center gap-1">
+        <div className="flex">
+          {[1,2,3,4,5].map(s => (
+            <span key={s} className={cn(starSize, s <= stars ? 'opacity-100' : 'opacity-25')}>⭐</span>
+          ))}
+        </div>
+        <span className={cn(textSize, 'font-black text-amber-600')}>{avg}</span>
+      </div>
+      <span className={cn(countText, 'text-slate-400 font-medium')}>{count} хүн үнэлсэн</span>
+    </div>
+  );
+};
+
+// ── Feature Support Bar ────────────────────────────────────────
+const FeatureSupportBar = ({
+  featureId,
+  featureSupport,
+  featureLiking,
+  userId,
+  onLike,
+  onSupport,
+}: {
+  featureId: string;
+  featureSupport: Record<string, { likes: number; supports: number }>;
+  featureLiking: string | null;
+  userId: string;
+  onLike: (id: string) => void;
+  onSupport: (id: string) => void;
+}) => {
+  const likeKey = `liked_feature_${featureId}_${userId}`;
+  const [liked, setLiked] = React.useState(() => !!localStorage.getItem(likeKey));
+  const fs = featureSupport[featureId];
+  const score = fs ? fs.likes + fs.supports * 50 : 0;
+
+  // Sync liked state when userId or featureSupport updates
+  React.useEffect(() => {
+    setLiked(!!localStorage.getItem(`liked_feature_${featureId}_${userId}`));
+  }, [featureId, userId, featureSupport]);
+
+  const handleLike = () => {
+    if (liked || featureLiking === featureId) return;
+    onLike(featureId);
+  };
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-slate-100">
+      <div className="flex-1 flex items-center gap-1.5">
+        <span className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Хөгжүүлэлтийн дэмжлэг</span>
+        {score > 0 && (
+          <span className="text-[10px] font-black text-brand-600 bg-brand-50 px-2 py-0.5 rounded-full">
+            {score >= 1000 ? `${(score / 1000).toFixed(1)}К` : score}
+          </span>
+        )}
+      </div>
+      <motion.button
+        whileTap={{ scale: 0.93 }}
+        disabled={liked || featureLiking === featureId}
+        onClick={handleLike}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all',
+          liked ? 'bg-rose-50 text-rose-400 opacity-60' : 'bg-rose-50 text-rose-500 active:bg-rose-100'
+        )}
+      >
+        <Heart size={13} fill={liked ? '#f43f5e' : 'none'} />
+        {liked ? 'Liked' : 'Like'}
+      </motion.button>
+      <motion.button
+        whileTap={{ scale: 0.93 }}
+        onClick={() => onSupport(featureId)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-brand-50 text-brand-600 active:bg-brand-100"
+      >
+        <span>💙</span> 5,000₮
+      </motion.button>
+    </div>
+  );
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>('home');
   const [teamTab, setTeamTab] = useState<number>(0);
@@ -1604,8 +1694,22 @@ export default function App() {
   });
   const [recentSupports, setRecentSupports] = useState<SupportAction[]>([]);
   // iKAJAKi page (home page 2)
-  const [homePageIndex, setHomePageIndex] = useState(1);
-  const [showPageSelector, setShowPageSelector] = useState(false);
+  const [homePageIndex, setHomePageIndex] = useState<number>(() => {
+    const saved = localStorage.getItem('homePageIndex');
+    const n = saved ? parseInt(saved) : 1;
+    return n >= 1 && n <= 4 ? n : 1;
+  });
+  const [showPageSelector, setShowPageSelector] = useState(true);
+  const [showCyberCity, setShowCyberCity] = useState(false);
+  const [cyberRegistrations, setCyberRegistrations] = useState<any[]>([]);
+  const [cyberForm, setCyberForm] = useState({ name: '', phone: '' });
+  const [cyberSelectedBadge, setCyberSelectedBadge] = useState<string | null>(null);
+  const [cyberSelectedSub, setCyberSelectedSub] = useState<string | null>(null);
+  const [isSubmittingCyber, setIsSubmittingCyber] = useState(false);
+  const [cyberSection, setCyberSection] = useState<'sub' | 'badge'>('sub');
+  React.useEffect(() => {
+    localStorage.setItem('homePageIndex', String(homePageIndex));
+  }, [homePageIndex]);
   const swipeTouchStartX = React.useRef<number | null>(null);
   const lastTapTimeRef = React.useRef<number>(0);
   const [ikajakiStats, setIkajakiStats] = useState<Stats>({
@@ -1633,6 +1737,28 @@ export default function App() {
   const [isSubmittingPro, setIsSubmittingPro] = useState(false);
   const [isUpdatingProProfile, setIsUpdatingProProfile] = useState(false);
   const [isUpdatingProCover, setIsUpdatingProCover] = useState(false);
+  // Battle state
+  const [battleUsers, setBattleUsers] = useState<import('./types').BattleUser[]>([]);
+  const [battleLog, setBattleLog] = useState<string[]>([]);
+  const [battleWinner, setBattleWinner] = useState<import('./types').BattleUser | null>(null);
+  const [isBattleRunning, setIsBattleRunning] = useState(false);
+  const [battleStarted, setBattleStarted] = useState(false);
+  const [myBattleStats, setMyBattleStats] = useState<import('./types').BattleUser | null>(null);
+  const [showBattleRegister, setShowBattleRegister] = useState(false);
+  const [battleRegisterForm, setBattleRegisterForm] = useState<{ name: string; phone: string; heroType: import('./types').HeroType }>({ name: '', phone: '', heroType: 'ranged' });
+  const [isSubmittingBattleReg, setIsSubmittingBattleReg] = useState(false);
+  const [showBattleArena, setShowBattleArena] = useState(false);
+  type ArenaFighter = import('./types').BattleUser & { currentHp: number; isAlive: boolean; isAttacking: boolean; isHit: boolean; dmgTaken: number | null };
+  const [arenaFighters, setArenaFighters] = useState<ArenaFighter[]>([]);
+  const [arenaLog, setArenaLog] = useState('');
+  const [arenaRoundNum, setArenaRoundNum] = useState(0);
+  const battleRoundsRef = React.useRef<any[]>([]);
+  const battleStepRef = React.useRef(0);
+  const battleTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const battleSpeedRef = React.useRef<number>(600);
+  const [battleSpeedLabel, setBattleSpeedLabel] = useState<'normal' | 'fast' | 'turbo'>('normal');
+  const [battleSubTab, setBattleSubTab] = useState<'register' | 'list' | 'start' | 'leaderboard'>('register');
+  const [battleResults, setBattleResults] = useState<{ id: string; winner: { name: string; username: string }; participants: number; timestamp: any }[]>([]);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [allApps, setAllApps] = useState<AppEntry[]>([]);
   const [teamCandidates, setTeamCandidates] = useState<TeamCandidate[]>([]);
@@ -1661,8 +1787,285 @@ export default function App() {
   const [showGiftAddForm, setShowGiftAddForm] = useState(false);
   const [giftForm, setGiftForm] = useState({ name: '', eligibility: 'any', customAmount: '' });
 
+  // Other Mall state
+  const [showOtherMall, setShowOtherMall] = useState(false);
+  const [otherMallView, setOtherMallView] = useState<'home' | 'create' | 'list' | 'navigate'>('home');
+  const [otherMalls, setOtherMalls] = useState<{ id: string; name: string; floors: number; timestamp: any }[]>([]);
+  const [otherMallForm, setOtherMallForm] = useState({ name: '', floors: '', imageUrl: '' });
+  const [otherMallSubmitting, setOtherMallSubmitting] = useState(false);
+  const [otherMallDone, setOtherMallDone] = useState(false);
+  const [otherMallError, setOtherMallError] = useState('');
+  const [selectedOtherMall, setSelectedOtherMall] = useState<{ id: string; name: string; floors: number } | null>(null);
+  const [omFloor, setOmFloor] = useState(1);
+  const [omStoreIndex, setOmStoreIndex] = useState(0);
+  const [omMode, setOmMode] = useState<'floor' | 'store'>('floor');
+  const omModeRef = React.useRef<'floor' | 'store'>('floor');
+  const [showOmHelp, setShowOmHelp] = useState(false);
+  const [omInStorePage, setOmInStorePage] = useState(0);
+  const omInStorePageRef = React.useRef(0);
+  const omTotalPagesRef = React.useRef(1);
+  const omStoreSwipeX = React.useRef<number | null>(null);
+  const omStoreSwipeY = React.useRef<number | null>(null);
+  const [omStorePageDir, setOmStorePageDir] = useState(1);
+  const [showOmEnterExit, setShowOmEnterExit] = useState(false);
+  const [omTapPos, setOmTapPos] = useState({ x: 0, y: 0 });
+  const omDoubleTapRef = React.useRef(0);
+  const omSwipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const [omFloorInfo, setOmFloorInfo] = useState<Record<string, string>>({});
+  const [omEditFloor, setOmEditFloor] = useState(false);
+  const [omEditFloorValue, setOmEditFloorValue] = useState('');
+  const [omShowSales, setOmShowSales] = useState(false);
+  const [omSalesForm, setOmSalesForm] = useState({ name: '', phone: '', storeName: '', storeType: '', accessType: '' as '' | 'rent' | 'buy' | 'showcase', itemTier: '' as '' | '10' | '25' | '50' | '100' | '250', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } });
+  const [omSalesSubmitting, setOmSalesSubmitting] = useState(false);
+  const [omSalesDone, setOmSalesDone] = useState(false);
+
+  // Service Center state
+  const [showServiceCenter, setShowServiceCenter] = useState(false);
+  const [serviceCenterView, setServiceCenterView] = useState<'home' | 'create' | 'list' | 'navigate'>('home');
+  const [serviceCenters, setServiceCenters] = useState<{ id: string; name: string; floors: number; imageUrl?: string; timestamp: any }[]>([]);
+  const [serviceCenterForm, setServiceCenterForm] = useState({ name: '', floors: '', imageUrl: '' });
+  const [serviceCenterSubmitting, setServiceCenterSubmitting] = useState(false);
+  const [serviceCenterDone, setServiceCenterDone] = useState(false);
+  const [serviceCenterError, setServiceCenterError] = useState('');
+  const [selectedServiceCenter, setSelectedServiceCenter] = useState<{ id: string; name: string; floors: number } | null>(null);
+  const [scFloor, setScFloor] = useState(1);
+  const [scRoomIndex, setScRoomIndex] = useState(0);
+  const [scMode, setScMode] = useState<'floor' | 'store'>('floor');
+  const [scInStorePage, setScInStorePage] = useState(0);
+  const [scStorePageDir, setScStorePageDir] = useState(1);
+  const [showScEnterExit, setShowScEnterExit] = useState(false);
+  const [scTapPos, setScTapPos] = useState({ x: 0, y: 0 });
+  const scDoubleTapRef = React.useRef(0);
+  const scSwipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const [scFloorInfo, setScFloorInfo] = useState<Record<string, string>>({});
+  const [scEditFloor, setScEditFloor] = useState(false);
+  const [scEditFloorValue, setScEditFloorValue] = useState('');
+  const [scShowSales, setScShowSales] = useState(false);
+  const [scSalesForm, setScSalesForm] = useState({ name: '', phone: '', serviceName: '', serviceType: '', accessType: '' as '' | 'rent' | 'buy' | 'showcase', itemTier: '' as '' | '1' | '3' | '5' | '10' | '20', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } });
+  const [scSalesSubmitting, setScSalesSubmitting] = useState(false);
+  const [scSalesDone, setScSalesDone] = useState(false);
+
+  // Cyber Mall state
+  const [showCyberMall, setShowCyberMall] = useState(false);
+  const [mallFloor, setMallFloor] = useState(1);
+  const [mallMode, setMallMode] = useState<'chat' | 'floor' | 'store'>('chat');
+  const [mallStoreIndex, setMallStoreIndex] = useState(0);
+  const [mallInStorePage, setMallInStorePage] = useState(0); // 0=intro, 1+=product index
+  const [showMallEnterExit, setShowMallEnterExit] = useState(false);
+  const [mallTapPos, setMallTapPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const mallDoubleTapRef = React.useRef(0);
+  const mallSwipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const [mallMessages, setMallMessages] = useState<{ role: 'ai' | 'user'; text: string }[]>([
+    { role: 'ai', text: 'Сайн байна уу эрхэм үйлчлүүлэгч та манай цахим худалдааны төвд орж ирсэн байна. Таньд юу хэрэгтэй байна вэ? Та хэрэгтэй зүйлээ дэлгэрэнгүй хэлвэл би таны тухайн дэлгүүрт шууд аваачих болно.' }
+  ]);
+  const [mallInput, setMallInput] = useState('');
+  const mallChatRef = React.useRef<HTMLDivElement>(null);
+  const [mallShowSales, setMallShowSales] = useState(false);
+  const [mallSalesForm, setMallSalesForm] = useState({ name: '', phone: '', storeName: '', storeType: '', accessType: '' as '' | 'rent' | 'buy' | 'showcase', itemTier: '' as '' | '10' | '25' | '50' | '100' | '250', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } });
+  const [mallSalesSubmitting, setMallSalesSubmitting] = useState(false);
+  const [mallSalesDone, setMallSalesDone] = useState(false);
+  // Store access rights: key = `${mallType}__${roomNumber}`, value = owner username
+  const [storeAccess, setStoreAccess] = useState<Record<string, string>>({});
+  // Store profiles: key = `${mallType}__${roomNumber}`
+  const [storeProfiles, setStoreProfiles] = useState<Record<string, { storeName: string; description: string; imageUrl: string; website: string; phone: string; facebook: string; youtube: string; instagram: string; socialPaid: { facebook: boolean; youtube: boolean; instagram: boolean } }>>({});
+  const [showStoreProfileEditor, setShowStoreProfileEditor] = useState(false);
+  const [storeProfileEditorMeta, setStoreProfileEditorMeta] = useState<{ mallType: string; roomNumber: string; mallName: string }>({ mallType: '', roomNumber: '', mallName: '' });
+  const [storeProfileForm, setStoreProfileForm] = useState({ storeName: '', description: '', imageUrl: '', website: '', phone: '', facebook: '', youtube: '', instagram: '', socialPaid: { facebook: false, youtube: false, instagram: false } });
+  // Store products: key = `${mallType}__${roomNumber}`
+  const [storeProducts, setStoreProducts] = useState<Record<string, { id: string; name: string; description: string; imageUrl: string; price: number; stock: number }[]>>({});
+  const [productCarouselIndex, setProductCarouselIndex] = useState<Record<string, number>>({});
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [addProductMeta, setAddProductMeta] = useState<{ mallType: string; roomNumber: string }>({ mallType: '', roomNumber: '' });
+  const [storeProductForm, setStoreProductForm] = useState({ name: '', description: '', imageUrl: '', price: '', stock: '' });
+  const [productSubmitting, setProductSubmitting] = useState(false);
+  const [productImageUploading, setProductImageUploading] = useState(false);
+  const productImageInputRef = React.useRef<HTMLInputElement>(null);
+  const handleProductImagePick = (file: File) => {
+    if (!file) return;
+    setProductImageUploading(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        setStoreProductForm(f => ({ ...f, imageUrl: canvas.toDataURL('image/jpeg', 0.82) }));
+        setProductImageUploading(false);
+      };
+      img.src = ev.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+  const submitAddProduct = async () => {
+    if (productSubmitting || !storeProductForm.name.trim() || !storeProductForm.price) return;
+    setProductSubmitting(true);
+    try {
+      await addDoc(collection(db, 'store_products'), { mallType: addProductMeta.mallType, roomNumber: addProductMeta.roomNumber, name: storeProductForm.name.trim(), description: storeProductForm.description.trim(), imageUrl: storeProductForm.imageUrl, price: Number(storeProductForm.price), stock: Number(storeProductForm.stock) || 0, timestamp: serverTimestamp() });
+      setStoreProductForm({ name: '', description: '', imageUrl: '', price: '', stock: '' });
+      setShowAddProduct(false);
+    } catch (e: any) { alert('Алдаа: ' + (e?.message || String(e))); }
+    setProductSubmitting(false);
+  };
+  const [storeProfileSubmitting, setStoreProfileSubmitting] = useState(false);
+  const [storeImageUploading, setStoreImageUploading] = useState(false);
+  const storeImageInputRef = React.useRef<HTMLInputElement>(null);
+  const handleStoreImagePick = (file: File) => {
+    if (!file) return;
+    setStoreImageUploading(true);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 900;
+        let w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+          else { w = Math.round(w * MAX / h); h = MAX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        setStoreProfileForm(f => ({ ...f, imageUrl: dataUrl }));
+        setStoreImageUploading(false);
+      };
+      img.src = ev.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+  const hasStoreAccess = (mallType: string, roomNumber: string) => {
+    const owner = storeAccess[`${mallType}__${roomNumber}`];
+    if (!owner) return false; // owner байхгүй → төлбөр төлөөгүй, эрхгүй
+    const uname = appUser?.username || '';
+    const uid = appUser?.uid || auth.currentUser?.uid || '';
+    return owner === uname || owner === uid;
+  };
+  const openStoreProfileEditor = (mallType: string, roomNumber: string, mallName: string) => {
+    const key = `${mallType}__${roomNumber}`;
+    const existing = storeProfiles[key];
+    setStoreProfileEditorMeta({ mallType, roomNumber, mallName });
+    setStoreProfileForm(existing ? { storeName: existing.storeName, description: existing.description, imageUrl: existing.imageUrl, website: existing.website || '', phone: existing.phone || '', facebook: existing.facebook, youtube: existing.youtube, instagram: existing.instagram, socialPaid: existing.socialPaid || { facebook: false, youtube: false, instagram: false } } : { storeName: '', description: '', imageUrl: '', website: '', phone: '', facebook: '', youtube: '', instagram: '', socialPaid: { facebook: false, youtube: false, instagram: false } });
+    setShowStoreProfileEditor(true);
+  };
+  const saveStoreProfile = async () => {
+    if (storeProfileSubmitting) return;
+    setStoreProfileSubmitting(true);
+    const key = `${storeProfileEditorMeta.mallType}__${storeProfileEditorMeta.roomNumber}`;
+    try {
+      await setDoc(doc(db, 'store_profiles', key), { ...storeProfileForm, mallType: storeProfileEditorMeta.mallType, roomNumber: storeProfileEditorMeta.roomNumber, mallName: storeProfileEditorMeta.mallName, timestamp: serverTimestamp() });
+      setShowStoreProfileEditor(false);
+    } catch (e: any) { alert('Алдаа: ' + (e?.message || String(e))); }
+    setStoreProfileSubmitting(false);
+  };
+  // Store Renew / Sell modals
+  const [showStoreRenew, setShowStoreRenew] = useState(false);
+  const [showStoreSell, setShowStoreSell] = useState(false);
+  const [storeActionMeta, setStoreActionMeta] = useState<{ mallType: string; roomNumber: string; mallName: string; accessType: string }>({ mallType: '', roomNumber: '', mallName: '', accessType: '' });
+  const [storeRenewTier, setStoreRenewTier] = useState('');
+  const [storeRenewSubmitting, setStoreRenewSubmitting] = useState(false);
+  const [storeRenewDone, setStoreRenewDone] = useState(false);
+  const [storeSellTarget, setStoreSellTarget] = useState('');
+  const [storeSellSubmitting, setStoreSellSubmitting] = useState(false);
+  const [storeSellDone, setStoreSellDone] = useState(false);
+  const openStoreRenew = (mallType: string, roomNumber: string, mallName: string) => {
+    const acc = (storeAccess as any)[`${mallType}__${roomNumber}`];
+    setStoreActionMeta({ mallType, roomNumber, mallName, accessType: typeof acc === 'string' ? 'unlimited_rent' : (acc?.accessType || '') });
+    setStoreRenewTier(''); setStoreRenewDone(false);
+    setShowStoreRenew(true);
+  };
+  const openStoreSell = (mallType: string, roomNumber: string, mallName: string) => {
+    setStoreActionMeta({ mallType, roomNumber, mallName, accessType: '' });
+    setStoreSellTarget(''); setStoreSellDone(false);
+    setShowStoreSell(true);
+  };
+  const submitStoreRenew = async () => {
+    if (storeRenewSubmitting || !storeRenewTier) return;
+    setStoreRenewSubmitting(true);
+    try {
+      await addDoc(collection(db, 'store_renewals'), { mallType: storeActionMeta.mallType, roomNumber: storeActionMeta.roomNumber, mallName: storeActionMeta.mallName, owner: appUser?.username || appUser?.uid || auth.currentUser?.uid || '', tier: storeRenewTier, timestamp: serverTimestamp() });
+      setStoreRenewDone(true);
+    } catch (e: any) { alert('Алдаа: ' + (e?.message || String(e))); }
+    setStoreRenewSubmitting(false);
+  };
+  const submitStoreSell = async () => {
+    if (storeSellSubmitting || !storeSellTarget.trim()) return;
+    setStoreSellSubmitting(true);
+    try {
+      await addDoc(collection(db, 'store_transfers'), { mallType: storeActionMeta.mallType, roomNumber: storeActionMeta.roomNumber, mallName: storeActionMeta.mallName, currentOwner: appUser?.username || appUser?.uid || auth.currentUser?.uid || '', newOwner: storeSellTarget.trim(), timestamp: serverTimestamp() });
+      setStoreSellDone(true);
+    } catch (e: any) { alert('Алдаа: ' + (e?.message || String(e))); }
+    setStoreSellSubmitting(false);
+  };
+  // Store ratings aggregated: key = `${mallType}__${roomNumber}`, value = { avg, count }
+  const [storeRatings, setStoreRatings] = useState<Record<string, { avg: number; count: number }>>({});
+  // Store Rating Modal
+  const [showStoreRating, setShowStoreRating] = useState(false);
+  const [storeRatingValue, setStoreRatingValue] = useState(0);
+  const [storeRatingHover, setStoreRatingHover] = useState(0);
+  const [storeRatingSubmitting, setStoreRatingSubmitting] = useState(false);
+  const [storeRatingOnExit, setStoreRatingOnExit] = useState<(() => void) | null>(null);
+  const [storeRatingMeta, setStoreRatingMeta] = useState<{ mallName: string; roomNumber: string; mallType: string }>({ mallName: '', roomNumber: '', mallType: '' });
+  const handleStoreRatingExit = (mallName: string, roomNumber: string, mallType: string, onExit: () => void) => {
+    setStoreRatingMeta({ mallName, roomNumber, mallType });
+    setStoreRatingValue(0);
+    setStoreRatingHover(0);
+    setStoreRatingOnExit(() => onExit);
+    setShowStoreRating(true);
+  };
+  const submitStoreRating = async (rating: number) => {
+    if (storeRatingSubmitting) return;
+    setStoreRatingSubmitting(true);
+    try {
+      await addDoc(collection(db, 'store_ratings'), {
+        mallName: storeRatingMeta.mallName,
+        roomNumber: storeRatingMeta.roomNumber,
+        mallType: storeRatingMeta.mallType,
+        rating,
+        timestamp: serverTimestamp(),
+      });
+    } catch (_) {}
+    setStoreRatingSubmitting(false);
+    setShowStoreRating(false);
+    storeRatingOnExit?.();
+    setStoreRatingOnExit(null);
+  };
+  type MallStore = { name: string; type: string; desc: string; cover: string; profile: string; products: string[]; website?: string; facebook?: string; instagram?: string; youtube?: string; };
+  const MALL_DATA: Record<number, { label: string; stores: MallStore[] }> = {
+    1: { label: 'Үндсэн', stores: [
+      { name: 'Cyber Hub', type: 'Технологийн Дэлгүүр', desc: 'Хамгийн шинэ технологи бүтээгдэхүүн', cover: 'linear-gradient(135deg,#6366f1,#8b5cf6)', profile: '🏪', products: ['Ухаалаг гар утас', 'Таблет', 'Зөөврийн компьютер', 'Smart Watch'] },
+      { name: 'Digital Zone', type: 'Дижитал Дэлгүүр', desc: 'Дижитал бүтээгдэхүүн ба програм хангамж', cover: 'linear-gradient(135deg,#0ea5e9,#6366f1)', profile: '💻', products: ['Антивирус', 'Office Suite', 'Design App', 'VPN Service'] },
+      { name: 'Cyber Cafe', type: 'Кафе', desc: 'Цахим хоол захиалга ба хүргэлт', cover: 'linear-gradient(135deg,#f59e0b,#ef4444)', profile: '☕', products: ['Americano', 'Latte', 'Sandwich', 'Burger'] },
+    ]},
+    2: { label: 'Хувцас', stores: [
+      { name: 'Fashion World', type: 'Хувцасны Дэлгүүр', desc: 'Трэнд хувцас загварын дэлгүүр', cover: 'linear-gradient(135deg,#ec4899,#f43f5e)', profile: '👗', products: ['Dress', 'Jacket', 'Jeans', 'Sneakers'] },
+      { name: 'Urban Style', type: 'Хувцасны Дэлгүүр', desc: 'Хотын загвар хувцас', cover: 'linear-gradient(135deg,#f43f5e,#fb923c)', profile: '👔', products: ['T-Shirt', 'Hoodie', 'Cap', 'Belt'] },
+      { name: 'Kids Corner', type: 'Хүүхдийн Дэлгүүр', desc: 'Хүүхдийн хувцас ба тоглоом', cover: 'linear-gradient(135deg,#a3e635,#34d399)', profile: '🧒', products: ['Overalls', 'Pajama', 'School Bag', 'Toy Set'] },
+    ]},
+    3: { label: 'Электрон', stores: [
+      { name: 'Gadget Store', type: 'Цахилгаан Барааны Дэлгүүр', desc: 'Гэр ахуйн цахилгаан бараа', cover: 'linear-gradient(135deg,#06b6d4,#3b82f6)', profile: '📱', products: ['TV', 'Fridge', 'Air Conditioner', 'Vacuum'] },
+      { name: 'Audio World', type: 'Аудио Дэлгүүр', desc: 'Дуу авиа, чихэвч, чанга яригч', cover: 'linear-gradient(135deg,#7c3aed,#db2777)', profile: '🎧', products: ['Earbuds', 'Speaker', 'Headphones', 'Amplifier'] },
+    ]},
+    4: { label: 'Хоол', stores: [
+      { name: 'Food Court', type: 'Хоолны Цэг', desc: 'Олон улсын хоол хүнсний цэг', cover: 'linear-gradient(135deg,#f59e0b,#f97316)', profile: '🍜', products: ['Буузны сет', 'Pizza', 'Sushi', 'Burger'] },
+      { name: 'Fresh Market', type: 'Хүнсний Дэлгүүр', desc: 'Шинэхэн ногоо жимс', cover: 'linear-gradient(135deg,#22c55e,#16a34a)', profile: '🥦', products: ['Улаан лооль', 'Алим', 'Сонгино', 'Нимбэг'] },
+    ]},
+    5: { label: 'Гоо сайхан', stores: [
+      { name: 'Beauty Lab', type: 'Гоо Сайхны Дэлгүүр', desc: 'Гоо сайхны бүтээгдэхүүн', cover: 'linear-gradient(135deg,#f472b6,#c084fc)', profile: '💄', products: ['Lipstick', 'Foundation', 'Perfume', 'Moisturizer'] },
+      { name: 'Salon Pro', type: 'Салон', desc: 'Үсчин, гоо сайхны үйлчилгээ', cover: 'linear-gradient(135deg,#a78bfa,#f9a8d4)', profile: '✂️', products: ['Үс засах', 'Нүүр будах', 'Хумс засах', 'Масаж'] },
+    ]},
+  };
   // Shop state
   const [shopSubTab, setShopSubTab] = useState<'shop' | 'programs' | 'opportunities' | 'requests'>('shop');
+  const [shopPageIndex, setShopPageIndex] = useState(0); // 0=intro, 1+=product page
+  const [shopPageDir, setShopPageDir] = useState(1); // 1=forward, -1=backward
+  const shopSwipeX = React.useRef<number | null>(null);
+  const shopSwipeY = React.useRef<number | null>(null);
+  const shopPageIndexRef = React.useRef(0);
+  const shopProductsRef = React.useRef<any[]>([]);
   const [shopRequestForm, setShopRequestForm] = useState({ name: '', phone: '', type: 'buy', content: '', budget: '' });
   const [shopRequestSubmitting, setShopRequestSubmitting] = useState(false);
   const [shopRequestDone, setShopRequestDone] = useState(false);
@@ -1708,6 +2111,8 @@ export default function App() {
   const [accessList, setAccessList] = useState<any[]>([]);
   const [addAccessForm, setAddAccessForm] = useState({ name: '', email: '', password: '', role: 'admin' });
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showQuickMenu, setShowQuickMenu] = useState(false);
+  const globalTapRef = React.useRef<number>(0);
   const [showAddAccessForm, setShowAddAccessForm] = useState(false);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [announceForm, setAnnounceForm] = useState({ title: '', content: '' });
@@ -1779,10 +2184,42 @@ export default function App() {
     }
   };
 
+  const googleSignIn = async (): Promise<import('firebase/auth').UserCredential> => {
+    const provider = new GoogleAuthProvider();
+    return signInWithPopup(auth, provider);
+  };
+
+  const featureLikeKey = (featureId: string) => {
+    const uid = appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon';
+    return `liked_feature_${featureId}_${uid}`;
+  };
+
+  const handleFeatureLike = async (featureId: string) => {
+    const likedKey = featureLikeKey(featureId);
+    if (localStorage.getItem(likedKey)) return;
+    setFeatureLiking(featureId);
+    try {
+      await setDoc(doc(db, 'feature_support', featureId), { likes: increment(1) }, { merge: true });
+      localStorage.setItem(likedKey, '1');
+    } catch (e: any) {
+      alert('Like алдаа: ' + (e?.message || String(e)));
+    }
+    setFeatureLiking(null);
+  };
+
+  const handleFeatureSupport = async (featureId: string) => {
+    try {
+      const response = await axios.post('/api/qpay/invoice', { amount: 5000, description: `Feature Support: ${featureId}`, senderPhone: appUser?.phone || '' });
+      setQpayInvoice({ ...response.data, amount: 5000 });
+      setOnPaymentSuccess(() => async () => {
+        await setDoc(doc(db, 'feature_support', featureId), { supports: increment(1) }, { merge: true });
+      });
+    } catch { alert('Алдаа гарлаа.'); }
+  };
+
   const handleGoogleAdminLogin = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const result = await googleSignIn();
       const email = result.user.email;
       if (email && ADMIN_EMAILS.includes(email)) {
         setIsAdminUnlocked(true);
@@ -1875,8 +2312,7 @@ export default function App() {
   const handleAppUserGoogleLogin = async () => {
     setAuthLoading(true); setAuthError('');
     try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const result = await googleSignIn();
       const u = result.user;
       const uname = (u.email?.split('@')[0] || u.uid.slice(0, 8)).toLowerCase().replace(/[^a-z0-9_]/g, '');
       const snap = await getDoc(doc(db, 'user_profiles', uname));
@@ -2009,6 +2445,7 @@ export default function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedCitizen, setSelectedCitizen] = useState<any>(null);
   const [profileViewUser, setProfileViewUser] = useState<any>(null);
+  const [profileType, setProfileType] = useState<'regular' | 'pro' | 'prime'>('regular');
   const [profileUsers, setProfileUsers] = useState<any[]>([]);
   const [showProfileQuickSupport, setShowProfileQuickSupport] = useState(false);
   const [profileQuickTier, setProfileQuickTier] = useState<SupportTier>('starter');
@@ -2142,18 +2579,26 @@ export default function App() {
   const [wonPrize, setWonPrize] = useState<any | null>(null);
   const [wheelDeg, setWheelDeg] = useState(0);
   // Add question form
-  const [addQForm, setAddQForm] = useState({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '' });
+  const [addQForm, setAddQForm] = useState({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '', socialLink: '' });
   const [isSubmittingQ, setIsSubmittingQ] = useState(false);
   const [showAddQLifeline, setShowAddQLifeline] = useState(false);
   // Prize form (admin)
   const [prizeForm, setPrizeForm] = useState({ name: '', probability: 0.1 });
   const [isSubmittingPrize, setIsSubmittingPrize] = useState(false);
+  // Askify social links (admin config)
+  const [askifySocialLinks, setAskifySocialLinks] = useState({ facebook: '', youtube: '', instagram: '' });
+  const [askifySocialForm, setAskifySocialForm] = useState({ facebook: '', youtube: '', instagram: '' });
+  const [isSavingSocialLinks, setIsSavingSocialLinks] = useState(false);
   // Record
   const [playerName, setPlayerName] = useState('');
   const [recordSaved, setRecordSaved] = useState(false);
   const [slotDigits, setSlotDigits] = useState<number[]>(Array(10).fill(0));
   const [isSlotSpinning, setIsSlotSpinning] = useState(false);
   const [slotFinalNumber, setSlotFinalNumber] = useState<string | null>(null);
+
+  // Feature support (like/support per tab)
+  const [featureSupport, setFeatureSupport] = useState<Record<string, { likes: number; supports: number }>>({});
+  const [featureLiking, setFeatureLiking] = useState<string | null>(null);
 
   // Fish game state
   const [fishList, setFishList] = useState<any[]>([]);
@@ -2460,6 +2905,90 @@ export default function App() {
       setProSupports(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SupportAction)));
     }, () => {});
 
+    // Listen for battle stats
+    const unsubscribeBattle = onSnapshot(collection(db, 'battle_stats'), (snapshot) => {
+      setBattleUsers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() } as import('./types').BattleUser)));
+    }, () => {});
+
+    // Listen for Cyber City registrations
+    const unsubscribeCyberCity = onSnapshot(collection(db, 'cyber_city'), (snapshot) => {
+      const regs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      regs.sort((a: any, b: any) => (a.citizenNumber || 999) - (b.citizenNumber || 999));
+      setCyberRegistrations(regs);
+    }, () => {});
+
+    // Listen for battle results (leaderboard)
+    const unsubscribeBattleResults = onSnapshot(collection(db, 'battle_results'), (snapshot) => {
+      const results = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      results.sort((a: any, b: any) => b.id.localeCompare(a.id));
+      setBattleResults(results);
+    }, () => {});
+
+    const unsubscribeOtherMalls = onSnapshot(collection(db, 'other_malls'), (snapshot) => {
+      const malls = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      malls.sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setOtherMalls(malls);
+    }, () => {});
+
+    const unsubscribeOmFloors = onSnapshot(collection(db, 'other_mall_floors'), (snapshot) => {
+      const info: Record<string, string> = {};
+      snapshot.docs.forEach(d => { info[d.id] = (d.data() as any).direction || ''; });
+      setOmFloorInfo(info);
+    }, () => {});
+
+    const unsubscribeServiceCenters = onSnapshot(collection(db, 'service_centers'), (snapshot) => {
+      const centers = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as any));
+      centers.sort((a: any, b: any) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+      setServiceCenters(centers);
+    }, () => {});
+
+    const unsubscribeScFloors = onSnapshot(collection(db, 'service_center_floors'), (snapshot) => {
+      const info: Record<string, string> = {};
+      snapshot.docs.forEach(d => { info[d.id] = (d.data() as any).direction || ''; });
+      setScFloorInfo(info);
+    }, () => {});
+
+    const unsubscribeStoreProducts = onSnapshot(collection(db, 'store_products'), (snapshot) => {
+      const prods: Record<string, any[]> = {};
+      snapshot.docs.forEach(d => {
+        const data = d.data() as any;
+        const key = `${data.mallType}__${data.roomNumber}`;
+        if (!prods[key]) prods[key] = [];
+        prods[key].push({ id: d.id, ...data });
+      });
+      Object.values(prods).forEach(arr => arr.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
+      setStoreProducts(prods);
+    }, () => {});
+
+    const unsubscribeStoreAccess = onSnapshot(collection(db, 'store_access'), (snapshot) => {
+      const access: Record<string, string> = {};
+      snapshot.docs.forEach(d => { access[d.id] = (d.data() as any).owner || ''; });
+      setStoreAccess(access);
+    }, () => {});
+
+    // javkhlantai-д other_mall__20001 эзэмших эрх олгох (нэг удаагийн setup)
+    setDoc(doc(db, 'store_access', 'other_mall__20001'), { owner: 'javkhlantai' }, { merge: true }).catch(() => {});
+
+    const unsubscribeStoreProfiles = onSnapshot(collection(db, 'store_profiles'), (snapshot) => {
+      const profiles: Record<string, any> = {};
+      snapshot.docs.forEach(d => { profiles[d.id] = d.data(); });
+      setStoreProfiles(profiles);
+    }, () => {});
+
+    const unsubscribeStoreRatings = onSnapshot(collection(db, 'store_ratings'), (snapshot) => {
+      const agg: Record<string, { sum: number; count: number }> = {};
+      snapshot.docs.forEach(d => {
+        const data = d.data() as any;
+        const key = `${data.mallType}__${data.roomNumber}`;
+        if (!agg[key]) agg[key] = { sum: 0, count: 0 };
+        agg[key].sum += data.rating || 0;
+        agg[key].count += 1;
+      });
+      const result: Record<string, { avg: number; count: number }> = {};
+      Object.entries(agg).forEach(([k, v]) => { result[k] = { avg: Math.round((v.sum / v.count) * 10) / 10, count: v.count }; });
+      setStoreRatings(result);
+    }, () => {});
+
     return () => {
       unsubscribeStats();
       unsubscribeSupports();
@@ -2469,6 +2998,17 @@ export default function App() {
       unsubscribeIkajakiSupports();
       unsubscribeProStats();
       unsubscribeProSupports();
+      unsubscribeBattle();
+      unsubscribeBattleResults();
+      unsubscribeCyberCity();
+      unsubscribeOtherMalls();
+      unsubscribeOmFloors();
+      unsubscribeServiceCenters();
+      unsubscribeScFloors();
+      unsubscribeStoreProducts();
+      unsubscribeStoreAccess();
+      unsubscribeStoreProfiles();
+      unsubscribeStoreRatings();
     };
   }, []);
 
@@ -2603,6 +3143,21 @@ export default function App() {
       setPrizes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (error) => handleFirestoreError(error, OperationType.GET, 'askify_prizes'));
 
+    const unsubscribeFeatureSupport = onSnapshot(collection(db, 'feature_support'), (snap) => {
+      const data: Record<string, { likes: number; supports: number }> = {};
+      snap.docs.forEach(d => { data[d.id] = { likes: (d.data() as any).likes || 0, supports: (d.data() as any).supports || 0 }; });
+      setFeatureSupport(data);
+    }, () => {});
+
+    const unsubscribeAskifyConfig = onSnapshot(doc(db, 'askify_config', 'social'), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        const links = { facebook: data.facebook || '', youtube: data.youtube || '', instagram: data.instagram || '' };
+        setAskifySocialLinks(links);
+        setAskifySocialForm(links);
+      }
+    }, () => {});
+
     const qBirthdays = query(collection(db, 'birthdays'), orderBy('timestamp', 'desc'));
     const unsubscribeBirthdays = onSnapshot(qBirthdays, (snap) => {
       setBirthdays(snap.docs.map(d => ({ id: d.id, ...d.data() } as BirthdayEntry)));
@@ -2682,6 +3237,8 @@ export default function App() {
       unsubscribeQuestions();
       unsubscribeAskifyRecords();
       unsubscribePrizes();
+      unsubscribeFeatureSupport();
+      unsubscribeAskifyConfig();
       unsubscribeBirthdays();
       unsubscribeMagicWords();
       unsubscribeFish();
@@ -2698,6 +3255,30 @@ export default function App() {
       unsubscribeAllOrders();
     };
   }, []);
+
+  // Global double-tap → Quick Menu (disabled inside malls)
+  useEffect(() => {
+    const handleTouchEnd = (e: TouchEvent) => {
+      // Don't trigger inside malls or if menu already open
+      if (showQuickMenu || showCyberMall || showOtherMall || showServiceCenter) return;
+      const now = Date.now();
+      if (now - globalTapRef.current < 320) {
+        e.preventDefault();
+        setShowQuickMenu(true);
+      }
+      globalTapRef.current = now;
+    };
+    const handleDblClick = () => {
+      if (showQuickMenu || showCyberMall || showOtherMall || showServiceCenter) return;
+      setShowQuickMenu(true);
+    };
+    document.addEventListener('touchend', handleTouchEnd, { passive: false });
+    document.addEventListener('dblclick', handleDblClick);
+    return () => {
+      document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('dblclick', handleDblClick);
+    };
+  }, [showQuickMenu, showCyberMall, showOtherMall, showServiceCenter]);
 
   // User ID system
   useEffect(() => {
@@ -2798,6 +3379,209 @@ export default function App() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Battle: invite a friend (register with referral) → +1 HP to inviter
+  const handleBattleInviteAccepted = async (inviterUsername: string, newUserUid: string, newUserName: string, newUserUsername: string) => {
+    try {
+      // +1 HP to inviter
+      const inviterDoc = battleUsers.find(u => u.username === inviterUsername);
+      if (inviterDoc) {
+        await setDoc(doc(db, 'battle_stats', inviterDoc.uid), { hp: increment(1) }, { merge: true });
+        // If inviter was referred by someone, give that person +1 Armor
+        if (inviterDoc.referredBy) {
+          const grandpaDoc = battleUsers.find(u => u.username === inviterDoc.referredBy);
+          if (grandpaDoc) {
+            await setDoc(doc(db, 'battle_stats', grandpaDoc.uid), { armor: increment(1) }, { merge: true });
+          }
+        }
+      }
+      // Create battle stats for new user
+      await setDoc(doc(db, 'battle_stats', newUserUid), {
+        username: newUserUsername, name: newUserName,
+        hp: 100, armor: 0, attack: 1, survivalChance: 0,
+        referredBy: inviterUsername,
+      }, { merge: true });
+    } catch (err) { console.error(err); }
+  };
+
+  // Battle: support made → +1 Attack per 10,000₮ to supporter; +1% Survival Chance to referrer of supporter
+  const updateBattleOnSupport = async (supporterUsername: string, amount: number) => {
+    try {
+      const attackGain = Math.floor(amount / 10000);
+      if (attackGain <= 0) return;
+      const supporterDoc = battleUsers.find(u => u.username === supporterUsername);
+      if (supporterDoc) {
+        await setDoc(doc(db, 'battle_stats', supporterDoc.uid), { attack: increment(attackGain) }, { merge: true });
+        if (supporterDoc.referredBy) {
+          const referrerDoc = battleUsers.find(u => u.username === supporterDoc.referredBy);
+          if (referrerDoc) {
+            await setDoc(doc(db, 'battle_stats', referrerDoc.uid), { survivalChance: increment(1) }, { merge: true });
+          }
+        }
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  // Admin: run battle simulation
+  const runBattle = () => {
+    if (isBattleRunning) return;
+    if (battleTimerRef.current) clearInterval(battleTimerRef.current);
+
+    const BOTS: import('./types').BattleUser[] = [
+      { uid: 'bot1', username: 'bot_darkwarrior', name: 'Харанхуй Дайчин', hp: 100, armor: 3, attack: 2, survivalChance: 5, heroType: 'melee' },
+      { uid: 'bot2', username: 'bot_shadowarcher', name: 'Сүүдрийн Харваач', hp: 100, armor: 0, attack: 1, survivalChance: 15, heroType: 'ranged' },
+      { uid: 'bot3', username: 'bot_ironshield',   name: 'Төмөр Хамгаалагч', hp: 100, armor: 8, attack: 1, survivalChance: 0, heroType: 'melee' },
+      { uid: 'bot4', username: 'bot_swiftwind',    name: 'Хурдан Салхи',    hp: 100, armor: 0, attack: 2, survivalChance: 20, heroType: 'ranged' },
+      { uid: 'bot5', username: 'bot_berserker',    name: 'Галзуу Дайчин',   hp: 100, armor: 2, attack: 4, survivalChance: 0, heroType: 'melee' },
+      { uid: 'bot6', username: 'bot_phantom',      name: 'Сүнсний Нум',     hp: 100, armor: 0, attack: 1, survivalChance: 18, heroType: 'ranged' },
+      { uid: 'bot7', username: 'bot_stoneguard',   name: 'Чулуун Манаач',   hp: 100, armor: 6, attack: 2, survivalChance: 0, heroType: 'melee' },
+      { uid: 'bot8', username: 'bot_eagleeye',     name: 'Бүргэдийн Нүд',   hp: 100, armor: 0, attack: 1, survivalChance: 22, heroType: 'ranged' },
+    ];
+    const allFighters = [...battleUsers, ...BOTS];
+
+    // Pre-compute all rounds
+    type RoundStep = {
+      roundNum: number; log: string;
+      hpMap: Record<string, number>;
+      aliveSet: Set<string>;
+      attackerUid: string; defenderUid: string;
+      dmgToAttacker: number; dmgToDefender: number;
+    };
+    const rounds: RoundStep[] = [];
+    const alive = allFighters.map(u => ({ ...u, currentHp: u.hp }));
+    let roundNum = 1;
+    while (alive.length > 1 && roundNum <= 800) {
+      const i = Math.floor(Math.random() * alive.length);
+      let j = Math.floor(Math.random() * (alive.length - 1));
+      if (j >= i) j++;
+      const a = alive[i]; const b = alive[j];
+      const dmgToB = Math.max(1, a.attack - Math.floor(b.armor / 5));
+      const dmgToA = Math.max(1, b.attack - Math.floor(a.armor / 5));
+      a.currentHp -= dmgToA;
+      b.currentHp -= dmgToB;
+      let logStr = `⚔️ Раунд ${roundNum}: ${a.name} ➜ ${b.name} (-${dmgToB}hp) · ${b.name} ➜ ${a.name} (-${dmgToA}hp)`;
+      const toRemove: number[] = [];
+      [{ f: a, idx: i }, { f: b, idx: j }].forEach(({ f, idx }) => {
+        if (f.currentHp <= 0) {
+          const survived = Math.random() * 100 < f.survivalChance;
+          if (survived) { f.currentHp = 1; logStr += ` · ✨ ${f.name} амьд үлдлээ!`; }
+          else { toRemove.push(idx); logStr += ` · 💀 ${f.name} унав`; }
+        }
+      });
+      toRemove.sort((x, y) => y - x).forEach(idx => alive.splice(idx, 1));
+      const hpMap: Record<string, number> = {};
+      alive.forEach(u => { hpMap[u.uid] = u.currentHp; });
+      rounds.push({ roundNum, log: logStr, hpMap, aliveSet: new Set(alive.map(u => u.uid)), attackerUid: a.uid, defenderUid: b.uid, dmgToAttacker: dmgToA, dmgToDefender: dmgToB });
+      roundNum++;
+    }
+    const winner = alive[0];
+
+    // Initialize arena state
+    const initialFighters = allFighters.map(u => ({ ...u, currentHp: u.hp, isAlive: true, isAttacking: false, isHit: false, dmgTaken: null as number | null }));
+    setArenaFighters(initialFighters);
+    setArenaLog(`⚔️ Тулаан эхэллээ! ${battleUsers.length} тоглогч + 8 бот = ${allFighters.length} оролцогч`);
+    setArenaRoundNum(0);
+    setBattleWinner(null);
+    setIsBattleRunning(true);
+    setBattleStarted(true);
+    setShowBattleArena(true);
+
+    battleRoundsRef.current = rounds;
+    battleStepRef.current = 0;
+
+    battleTimerRef.current = setInterval(() => {
+      const step = battleStepRef.current;
+      if (step >= battleRoundsRef.current.length) {
+        clearInterval(battleTimerRef.current!);
+        setArenaLog(`🏆 ЯЛАГЧ ТОДОРЛОО: ${winner.name}!`);
+        setBattleWinner(winner);
+        setBattleLog(rounds.map(r => r.log));
+        setIsBattleRunning(false);
+        setArenaFighters(prev => prev.map(f => ({ ...f, isAttacking: false, isHit: false, dmgTaken: null })));
+        setDoc(doc(db, 'battle_results', new Date().toISOString()), {
+          winner: { username: winner.username, name: winner.name },
+          timestamp: serverTimestamp(), participants: battleUsers.length,
+        }).catch(console.error);
+        return;
+      }
+      const r = battleRoundsRef.current[step];
+      setArenaRoundNum(r.roundNum);
+      setArenaLog(r.log);
+      setArenaFighters(prev => prev.map(f => {
+        const newHp = r.hpMap[f.uid] ?? f.currentHp;
+        const stillAlive = r.aliveSet.has(f.uid);
+        if (f.uid === r.attackerUid) return { ...f, currentHp: newHp, isAlive: stillAlive, isAttacking: true, isHit: false, dmgTaken: null };
+        if (f.uid === r.defenderUid) return { ...f, currentHp: newHp, isAlive: stillAlive, isAttacking: false, isHit: true, dmgTaken: r.dmgToDefender };
+        return { ...f, currentHp: r.hpMap[f.uid] ?? f.currentHp, isAlive: r.aliveSet.has(f.uid), isAttacking: false, isHit: false, dmgTaken: null };
+      }));
+      battleStepRef.current++;
+    }, 600);
+  };
+
+  const skipBattleToEnd = () => {
+    if (battleTimerRef.current) clearInterval(battleTimerRef.current);
+    const rounds = battleRoundsRef.current;
+    if (!rounds.length) return;
+    const lastR = rounds[rounds.length - 1];
+    // Apply final state
+    setArenaFighters(prev => prev.map(f => {
+      const hp = lastR.hpMap[f.uid] ?? (lastR.aliveSet.has(f.uid) ? f.currentHp : 0);
+      return { ...f, currentHp: hp, isAlive: lastR.aliveSet.has(f.uid), isAttacking: false, isHit: false, dmgTaken: null };
+    }));
+    setArenaRoundNum(lastR.roundNum);
+    battleStepRef.current = rounds.length; // trigger winner display on next tick
+    battleTimerRef.current = setInterval(() => {
+      clearInterval(battleTimerRef.current!);
+      setArenaLog(`🏆 ЯЛАГЧ ТОДОРЛОО!`);
+      setBattleWinner(null); // will be set by the stored winner
+      // re-trigger winner from the last alive fighter
+      setArenaFighters(prev => {
+        const alive = prev.filter(f => f.isAlive);
+        if (alive.length === 1) {
+          setBattleWinner(alive[0]);
+          setArenaLog(`🏆 ЯЛАГЧ ТОДОРЛОО: ${alive[0].name}!`);
+        }
+        return prev;
+      });
+      setBattleLog(rounds.map(r => r.log));
+      setIsBattleRunning(false);
+    }, 50);
+  };
+
+  const toggleBattleSpeed = () => {
+    if (battleTimerRef.current) clearInterval(battleTimerRef.current);
+    let newDelay: number;
+    let newLabel: 'normal' | 'fast' | 'turbo';
+    if (battleSpeedRef.current === 600) { newDelay = 250; newLabel = 'fast'; }
+    else if (battleSpeedRef.current === 250) { newDelay = 80; newLabel = 'turbo'; }
+    else { newDelay = 600; newLabel = 'normal'; }
+    battleSpeedRef.current = newDelay;
+    setBattleSpeedLabel(newLabel);
+    // Restart timer with new speed
+    battleTimerRef.current = setInterval(() => {
+      const step = battleStepRef.current;
+      if (step >= battleRoundsRef.current.length) {
+        clearInterval(battleTimerRef.current!);
+        setArenaFighters(prev => {
+          const alive = prev.filter(f => f.isAlive);
+          if (alive.length === 1) { setBattleWinner(alive[0]); setArenaLog(`🏆 ЯЛАГЧ ТОДОРЛОО: ${alive[0].name}!`); }
+          return prev.map(f => ({ ...f, isAttacking: false, isHit: false, dmgTaken: null }));
+        });
+        setBattleLog(battleRoundsRef.current.map((r: any) => r.log));
+        setIsBattleRunning(false);
+        return;
+      }
+      const r = battleRoundsRef.current[step];
+      setArenaRoundNum(r.roundNum);
+      setArenaLog(r.log);
+      setArenaFighters(prev => prev.map(f => {
+        if (f.uid === r.attackerUid) return { ...f, currentHp: r.hpMap[f.uid] ?? f.currentHp, isAlive: r.aliveSet.has(f.uid), isAttacking: true, isHit: false, dmgTaken: null };
+        if (f.uid === r.defenderUid) return { ...f, currentHp: r.hpMap[f.uid] ?? f.currentHp, isAlive: r.aliveSet.has(f.uid), isAttacking: false, isHit: true, dmgTaken: r.dmgToDefender };
+        return { ...f, currentHp: r.hpMap[f.uid] ?? f.currentHp, isAlive: r.aliveSet.has(f.uid), isAttacking: false, isHit: false, dmgTaken: null };
+      }));
+      battleStepRef.current++;
+    }, newDelay);
   };
 
   const handleIkajakiSupport = async () => {
@@ -3561,9 +4345,10 @@ export default function App() {
         answers: addQForm.answers,
         correctIndex: addQForm.correctIndex,
         addedBy: addQForm.addedBy,
+        ...(addQForm.socialLink.trim() ? { socialLink: addQForm.socialLink.trim() } : {}),
         timestamp: serverTimestamp(),
       });
-      setAddQForm({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '' });
+      setAddQForm({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '', socialLink: '' });
       alert('Асуулт амжилттай нэмэгдлээ.');
     } catch (error) {
       console.error(error);
@@ -3584,9 +4369,10 @@ export default function App() {
         answers: addQForm.answers,
         correctIndex: addQForm.correctIndex,
         addedBy: addQForm.addedBy,
+        ...(addQForm.socialLink.trim() ? { socialLink: addQForm.socialLink.trim() } : {}),
         timestamp: serverTimestamp(),
       });
-      setAddQForm({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '' });
+      setAddQForm({ question: '', answers: ['', '', '', ''], correctIndex: 0, addedBy: '', socialLink: '' });
       setShowAddQLifeline(false);
       if (gameActive) {
         // skip current question
@@ -3966,8 +4752,7 @@ export default function App() {
 
   const handleMagicGoogleSignIn = async () => {
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await googleSignIn();
       setMagicAddError('');
     } catch (err: any) {
       // Popup blocked — fall back to anonymous auth
@@ -4425,6 +5210,28 @@ export default function App() {
     }
   };
 
+  const handleIkajakiProfileImageUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUpdatingProProfile(true);
+      const compressed = await compressImage(file, 400, 400, 0.7);
+      await setDoc(doc(db, 'ikajaki_stats', 'global'), { profileImageUrl: compressed }, { merge: true });
+    } catch (err) { console.error(err); }
+    finally { setIsUpdatingProProfile(false); }
+  };
+
+  const handleIkajakiCoverImageUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUpdatingProCover(true);
+      const compressed = await compressImage(file, 1000, 600, 0.5);
+      await setDoc(doc(db, 'ikajaki_stats', 'global'), { coverImageUrl: compressed }, { merge: true });
+    } catch (err) { console.error(err); }
+    finally { setIsUpdatingProCover(false); }
+  };
+
   const handleSuperSupportTask = async (taskId: string, amount: number) => {
     try {
       const taskRef = doc(db, 'tasks', taskId);
@@ -4677,9 +5484,165 @@ export default function App() {
         {showSplash && <SplashScreen />}
       </AnimatePresence>
 
+      {/* ── PAGE SELECTOR ── */}
+      <AnimatePresence>
+        {showPageSelector && !showSplash && (
+          <motion.div key="pageselector"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[500] flex flex-col overflow-hidden bg-black">
+
+            {/* ── Top row: Г. Жавхлан (25% height, full width) ── */}
+            <motion.button
+              initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 28 }}
+              className="relative w-full flex items-center justify-center overflow-hidden border-b border-white/5"
+              style={{ height: '25%', background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
+              onClick={() => setShowPageSelector(false)}>
+              <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, #6366f120 0%, transparent 70%)' }} />
+              <div className="relative z-10 flex items-center gap-5">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-2xl shadow-xl">
+                  👨‍💼
+                </div>
+                <div className="text-left">
+                  <p className="text-white/40 text-[10px] font-black tracking-widest uppercase mb-0.5">Personal Page</p>
+                  <p className="text-white font-black text-2xl leading-none">Г. Жавхлан</p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <motion.div animate={{ opacity: [1,0.2,1] }} transition={{ repeat: Infinity, duration: 1.8 }}
+                      className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-white/35 text-[10px] font-bold">Нээлттэй</span>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute right-5 text-white/15 text-xl">›</div>
+            </motion.button>
+
+            {/* ── Bottom 2×3 grid (75% height) ── */}
+            <div className="flex-1 grid grid-cols-2 grid-rows-3">
+              {([
+                { delay: 0.10, icon: '🏬', sub: 'Cyber Mall', label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', dot: 'bg-indigo-400', onClick: () => { setShowPageSelector(false); setTimeout(() => setShowCyberMall(true), 200); } },
+                { delay: 0.14, icon: '🏪', sub: 'Marketplace', label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', dot: 'bg-emerald-400', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
+                { delay: 0.18, icon: '🛎️', sub: 'Service Center', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#2d1657,#4c1d95)', glow: '#a855f720', dot: 'bg-purple-400', onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
+                { delay: 0.22, icon: '⭐', sub: 'Useful', label: 'Хэрэгтэй', bg: 'linear-gradient(135deg,#0c1a2e,#1e3a5f)', glow: '#38bdf820', dot: 'bg-sky-400', onClick: () => setShowPageSelector(false) },
+                { delay: 0.26, icon: '💰', sub: 'Income', label: 'Орлогоо\nНэмье', bg: 'linear-gradient(135deg,#0a1a0a,#166534)', glow: '#4ade8020', dot: 'bg-green-400', onClick: () => { setShowPageSelector(false); setActiveTab('support'); } },
+                { delay: 0.30, icon: '👤', sub: 'Profile', label: 'My Profile', bg: 'linear-gradient(135deg,#1a0a2e,#4c1d95)', glow: '#a78bfa20', dot: 'bg-violet-400', onClick: () => { setShowPageSelector(false); setActiveTab('profile'); } },
+              ] as const).map((item, i) => (
+                <motion.button key={i}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: item.delay, type: 'spring', stiffness: 280, damping: 28 }}
+                  className={cn('relative flex flex-col items-center justify-center overflow-hidden',
+                    i % 2 === 0 ? 'border-r' : '', i < 4 ? 'border-b' : '', 'border-white/5')}
+                  style={{ background: item.bg }}
+                  onClick={item.onClick}>
+                  <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 40%, ${item.glow} 0%, transparent 65%)` }} />
+                  <div className="relative z-10 flex flex-col items-center gap-1.5">
+                    <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-xl mb-1">{item.icon}</div>
+                    <p className="text-white/40 text-[8px] font-black tracking-widest uppercase">{item.sub}</p>
+                    <p className="text-white font-black text-sm leading-tight text-center whitespace-pre-line">{item.label}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <motion.div animate={{ opacity: [1,0.2,1] }} transition={{ repeat: Infinity, duration: 1.8, delay: item.delay }}
+                        className={cn('w-1 h-1 rounded-full', item.dot)} />
+                      <span className="text-white/30 text-[9px] font-bold">Нээлттэй</span>
+                    </div>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Quick Menu (double-tap anywhere) ── */}
+      <AnimatePresence>
+        {showQuickMenu && (
+          <motion.div key="quickmenu"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[600] flex flex-col overflow-hidden bg-slate-50"
+          >
+            {/* ── Header ── */}
+            <motion.div
+              initial={{ y: -16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.03, type: 'spring', stiffness: 320, damping: 28 }}
+              className="flex items-center justify-between px-5 py-3 bg-white border-b border-slate-200/70"
+              style={{ boxShadow: '0 1px 0 0 rgba(0,0,0,0.04)' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base" style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>⚡</div>
+                <div>
+                  <p className="text-slate-400 text-[9px] font-black tracking-widest uppercase">Quick Menu</p>
+                  <p className="text-slate-900 font-black text-sm leading-none">Шуурхай цэс</p>
+                </div>
+              </div>
+              <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShowQuickMenu(false)}
+                className="w-9 h-9 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center"
+              >
+                <X size={15} className="text-slate-500" />
+              </motion.button>
+            </motion.div>
+
+            {/* ── 3×8 grid ── */}
+            <div className="flex-1 grid grid-cols-3 grid-rows-8">
+              {([
+                { delay: 0.05, icon: '🚪', label: 'Гарах',     accent: '#0284c7', disabled: false, onClick: () => { setShowQuickMenu(false); setShowPageSelector(true); } },
+                { delay: 0.07, icon: '🏙️', label: 'Cyber\nCity', accent: '#4f46e5', disabled: false, onClick: () => { setShowQuickMenu(false); setShowCyberCity(true); } },
+                { delay: 0.09, icon: '🏠', label: 'Нүүр',      accent: '#0284c7', disabled: false, onClick: () => { setShowQuickMenu(false); setActiveTab('home'); } },
+                { delay: 0.11, icon: '👤', label: 'Профайл',   accent: '#7c3aed', disabled: false, onClick: () => { setShowQuickMenu(false); setActiveTab('profile'); } },
+                { delay: 0.13, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.15, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.17, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.19, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.21, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.23, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.25, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.27, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.29, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.31, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.33, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.35, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.37, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.39, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.41, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.43, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.45, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.47, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.49, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+                { delay: 0.51, icon: '·', label: 'Удахгүй', accent: '#94a3b8', disabled: true, onClick: () => {} },
+              ]).map((item, i) => (
+                <motion.button key={i}
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: item.delay, duration: 0.18 }}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 bg-white border-slate-100',
+                    i % 3 !== 2 ? 'border-r' : '',
+                    i < 21 ? 'border-b' : '',
+                    'border',
+                    item.disabled ? 'opacity-30' : 'active:bg-slate-50'
+                  )}
+                  onClick={item.onClick}
+                  disabled={item.disabled}
+                >
+                  {!item.disabled ? (
+                    <>
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-sm border border-slate-100"
+                        style={{ background: `linear-gradient(135deg,${item.accent}18,${item.accent}30)` }}>
+                        {item.icon}
+                      </div>
+                      <p className="text-slate-700 font-black text-[10px] leading-tight text-center whitespace-pre-line">{item.label}</p>
+                    </>
+                  ) : (
+                    <div className="w-6 h-6 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+                      <span className="text-slate-300 text-xs font-black">+</span>
+                    </div>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
       <Navbar
         onBrandClick={() => setActiveTab('home')}
+        onBrandDoubleClick={() => setShowQuickMenu(true)}
         onSupportClick={() => setActiveTab('citizens')}
         onMenuClick={() => setShowSidebar(true)}
         onIntroClick={() => {
@@ -4693,24 +5656,27 @@ export default function App() {
         onProfileClick={() => setShowProfileDrawer(true)}
       />
 
-      {/* ── Жавхлантай бол Жаргалтай ── special section below navbar */}
-      <motion.button
-        onClick={() => setActiveTab('happy')}
-        whileHover={{ opacity: 0.92 }}
-        whileTap={{ scale: 0.99 }}
-        className="w-full relative overflow-hidden flex items-center justify-center gap-2 py-[50px] text-white text-base font-black tracking-wide"
-        style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #a855f7)' }}
-      >
-        <motion.div
-          className="absolute inset-0 opacity-20"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }}
-          animate={{ x: ['-100%', '200%'] }}
-          transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1.5 }}
-        />
-        <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity }}>✨</motion.span>
-        <span className="relative">Жавхлантай бол Жаргалтай</span>
-        <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}>😊</motion.span>
-      </motion.button>
+      {/* ── Жавхлантай бол Жаргалтай ── home only */}
+      {activeTab === 'home' && (
+        <motion.button
+          onClick={() => setActiveTab('happy')}
+          whileHover={{ opacity: 0.92 }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full relative overflow-hidden flex items-center justify-center gap-2 py-[20px] text-white text-base font-black tracking-wide"
+          style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #a855f7)' }}
+        >
+          <motion.div
+            className="absolute inset-0 opacity-20"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }}
+            animate={{ x: ['-100%', '200%'] }}
+            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 1.5 }}
+          />
+          <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity }}>✨</motion.span>
+          <span className="relative">Жавхлантай бол Жаргалтай</span>
+          <motion.span animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}>😊</motion.span>
+        </motion.button>
+      )}
+
 
       <Sidebar
         isOpen={showSidebar}
@@ -4722,6 +5688,15 @@ export default function App() {
         onSignOut={handleAppUserSignOut}
         onProfileClick={() => { setProfileViewUser(appUser); setActiveTab('profile'); }}
         onPageSelect={() => setShowPageSelector(true)}
+        onShopOpen={() => setShowCyberMall(true)}
+        counts={Object.fromEntries(
+          ['citizens','learn','shop','membership','website','battle','lucky_draw','lottery','askify','birthday','games','magic','zavgui']
+            .map(id => {
+              const fs = featureSupport[id];
+              const score = fs ? fs.likes + fs.supports * 50 : 0;
+              return [id, score];
+            })
+        )}
       />
 
       <ProfileDrawer
@@ -4741,7 +5716,23 @@ export default function App() {
           activeTab === 'lucky_draw' ? "overflow-hidden" : "overflow-y-auto"
         )}
         onDoubleClick={() => {
-          if (activeTab === 'home') setShowPageSelector(true);
+          setShowCyberCity(prev => !prev);
+        }}
+        onTouchStart={(e) => {
+          swipeTouchStartX.current = e.touches[0].clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (activeTab !== 'home' || swipeTouchStartX.current === null) return;
+          const dx = e.changedTouches[0].clientX - swipeTouchStartX.current;
+          swipeTouchStartX.current = null;
+          if (Math.abs(dx) < 60) return;
+          if (dx < 0) {
+            // Swipe left → next page
+            setHomePageIndex(prev => prev < 3 ? prev + 1 : 1);
+          } else {
+            // Swipe right → prev page
+            setHomePageIndex(prev => prev > 1 ? prev - 1 : 3);
+          }
         }}
       >
         {activeTab === 'home' && homePageIndex === 1 && (
@@ -4844,19 +5835,42 @@ export default function App() {
         {activeTab === 'home' && homePageIndex === 2 && (
           <>
             {/* Cover */}
-            <section className="relative h-64 md:h-80 overflow-hidden">
-              <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 70%, #6b21a8 100%)' }} />
+            <section className="relative h-64 md:h-80 overflow-hidden group">
+              {ikajakiStats.coverImageUrl ? (
+                <img src={ikajakiStats.coverImageUrl} alt="Cover" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 70%, #6b21a8 100%)' }} />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
-              <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                <span className="text-white text-[120px] font-black tracking-widest select-none">iK</span>
-              </div>
+              <label className="absolute bottom-4 right-6 p-3 bg-slate-900/60 backdrop-blur-md text-white rounded-2xl cursor-pointer hover:bg-slate-900/80 transition-all border border-white/20 flex items-center justify-center min-w-[44px] min-h-[44px] shadow-lg">
+                {isUpdatingProCover ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Camera size={20} />
+                )}
+                <input type="file" accept="image/*" onChange={handleIkajakiCoverImageUpdate} className="hidden" disabled={isUpdatingProCover} />
+              </label>
             </section>
 
             {/* Profile */}
             <section className="max-w-5xl mx-auto px-6 -mt-28 relative z-10">
               <div className="flex flex-col items-center text-center gap-6 mb-12">
-                <div className="w-36 h-36 md:w-48 md:h-48 rounded-[2.5rem] border-8 border-white overflow-hidden shadow-2xl bg-gradient-to-br from-purple-600 to-indigo-800 flex items-center justify-center cursor-pointer select-none">
-                  <span className="text-white font-black text-5xl">iK</span>
+                <div className="relative group">
+                  <div className="w-36 h-36 md:w-48 md:h-48 rounded-[2.5rem] border-8 border-white overflow-hidden shadow-2xl bg-gradient-to-br from-purple-600 to-indigo-800 flex items-center justify-center">
+                    {ikajakiStats.profileImageUrl ? (
+                      <img src={ikajakiStats.profileImageUrl} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="text-white font-black text-5xl">iK</span>
+                    )}
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-[2.5rem]">
+                    {isUpdatingProProfile ? (
+                      <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Camera size={32} className="text-white" />
+                    )}
+                    <input type="file" accept="image/*" onChange={handleIkajakiProfileImageUpdate} className="hidden" disabled={isUpdatingProProfile} />
+                  </label>
                 </div>
 
                 <div className="space-y-2">
@@ -4865,13 +5879,17 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-12 md:gap-24 py-4">
-                  <div className="flex flex-col items-center">
-                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(ikajakiStats.totalSupporters)}</span>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportersList(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-purple-600 transition-colors">{formatNumber(stats.totalSupporters)}</span>
                     <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supporters</span>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(ikajakiStats.totalAmount)}</span>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportsHistory(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-purple-600 transition-colors">{formatNumber(stats.totalAmount)}</span>
                     <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supports</span>
+                  </div>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportOthers(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-purple-600 transition-colors">{formatNumber(stats.totalSupported)}</span>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supported</span>
                   </div>
                 </div>
 
@@ -4973,13 +5991,17 @@ export default function App() {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-12 md:gap-24 py-4">
-                  <div className="flex flex-col items-center">
-                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(proStats.totalSupporters)}</span>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportersList(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-amber-500 transition-colors">{formatNumber(stats.totalSupporters)}</span>
                     <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supporters</span>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900">{formatNumber(proStats.totalAmount)}</span>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportsHistory(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-amber-500 transition-colors">{formatNumber(stats.totalAmount)}</span>
                     <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supports</span>
+                  </div>
+                  <div className="flex flex-col items-center cursor-pointer group" onClick={() => setShowSupportOthers(true)}>
+                    <span className="font-display font-bold text-2xl md:text-3xl text-slate-900 group-hover:text-amber-500 transition-colors">{formatNumber(stats.totalSupported)}</span>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Supported</span>
                   </div>
                 </div>
 
@@ -5053,71 +6075,214 @@ export default function App() {
         {/* Tab Content */}
         <div className={cn("max-w-5xl mx-auto px-6 pb-24", activeTab === 'home' ? "mt-8" : "pt-12")}>
             {activeTab === 'home' && homePageIndex === 2 && (
-              <div className="space-y-4">
-                <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
-                  <TrendingUp className="text-purple-600" />
-                  Сүүлийн дэмжлэгүүд
-                </h2>
-                {ikajakiSupports.length === 0 ? (
-                  <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="text-slate-300" />
-                    </div>
-                    <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                      <TrendingUp className="text-purple-600" />
+                      Сүүлийн дэмжлэгүүд
+                    </h2>
                   </div>
-                ) : (
-                  ikajakiSupports.map((support) => (
-                    <motion.div key={support.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                      className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-purple-500')}>
-                        <User size={24} />
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-slate-900">{support.name}</h4>
-                          <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
+                  <div className="space-y-4">
+                    {recentSupports.length === 0 ? (
+                      <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Users className="text-slate-300" />
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
-                        </p>
+                        <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
                       </div>
-                    </motion.div>
-                  ))
-                )}
+                    ) : (
+                      recentSupports.map((support) => (
+                        <motion.div key={support.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                          className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4">
+                          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-slate-400')}>
+                            <User size={24} />
+                          </div>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-900">{support.name}</h4>
+                              <span className="text-xs font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
+                            </div>
+                            {support.message && (
+                              <div className="bg-slate-50 p-4 rounded-2xl mb-2 flex gap-3">
+                                <MessageSquare size={16} className="text-slate-400 shrink-0 mt-1" />
+                                <p className="text-slate-600 text-sm leading-relaxed italic">"{support.message}"</p>
+                              </div>
+                            )}
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="bg-purple-900 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-purple-400/10 rounded-full -ml-12 -mb-12 blur-2xl" />
+                    <h3 className="font-display font-bold text-2xl mb-6 relative">Нийт Дэмжлэг</h3>
+                    <div className="space-y-6 relative">
+                      <div>
+                        <p className="text-purple-300 text-xs font-bold uppercase tracking-widest mb-1">Нийт дүн</p>
+                        <p className="text-3xl font-bold">{formatCurrency(stats.totalAmount)}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-purple-300 text-xs font-bold uppercase tracking-widest mb-1">Дэмжигчид</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSupporters)}</p>
+                        </div>
+                        <div>
+                          <p className="text-purple-300 text-xs font-bold uppercase tracking-widest mb-1">Гишүүд</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSubscribers)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-display font-bold text-lg text-slate-900">Дэлгүүр</h3>
+                      <button onClick={() => setActiveTab('shop')} className="text-xs font-bold text-purple-600 hover:underline">Бүгдийг харах</button>
+                    </div>
+                    <div className="space-y-4">
+                      {products.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-4">Одоогоор бараа байхгүй байна</p>
+                      ) : (
+                        products.slice(0, 2).map(product => (
+                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                              <Package size={20} className="text-purple-600" />
+                            </div>
+                            <div className="flex-grow">
+                              <p className="text-sm font-bold text-slate-900 leading-tight">{product.name}</p>
+                              <p className="text-xs font-bold text-purple-600">{Number(product.price).toLocaleString()}₮</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <h3 className="font-display font-bold text-lg text-slate-900 mb-4">Ангилал</h3>
+                    <div className="space-y-3">
+                      {(Object.keys(TIER_CONFIG) as SupportTier[]).map(tier => (
+                        <div key={tier} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", TIER_CONFIG[tier].color)} />
+                            <span className="text-sm font-medium text-slate-600">{TIER_CONFIG[tier].label}</span>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900">{stats.tierCounts[tier] || 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             {activeTab === 'home' && homePageIndex === 3 && (
-              <div className="space-y-4">
-                <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
-                  <TrendingUp className="text-amber-500" />
-                  Сүүлийн дэмжлэгүүд
-                </h2>
-                {proSupports.length === 0 ? (
-                  <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="text-slate-300" />
-                    </div>
-                    <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
+                      <TrendingUp className="text-amber-500" />
+                      Сүүлийн дэмжлэгүүд
+                    </h2>
                   </div>
-                ) : (
-                  proSupports.map((support) => (
-                    <motion.div key={support.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                      className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-amber-500')}>
-                        <User size={24} />
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex justify-between items-start mb-1">
-                          <h4 className="font-bold text-slate-900">{support.name}</h4>
-                          <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
+                  <div className="space-y-4">
+                    {recentSupports.length === 0 ? (
+                      <div className="bg-white p-12 rounded-3xl border border-dashed border-slate-200 text-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Users className="text-slate-300" />
                         </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
-                        </p>
+                        <p className="text-slate-400 font-medium">Одоогоор дэмжлэг ирээгүй байна.</p>
                       </div>
-                    </motion.div>
-                  ))
-                )}
+                    ) : (
+                      recentSupports.map((support) => (
+                        <motion.div key={support.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                          className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex gap-4">
+                          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shrink-0", TIER_CONFIG[support.tier]?.color || 'bg-slate-400')}>
+                            <User size={24} />
+                          </div>
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="font-bold text-slate-900">{support.name}</h4>
+                              <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">{formatCurrency(support.amount)}</span>
+                            </div>
+                            {support.message && (
+                              <div className="bg-slate-50 p-4 rounded-2xl mb-2 flex gap-3">
+                                <MessageSquare size={16} className="text-slate-400 shrink-0 mt-1" />
+                                <p className="text-slate-600 text-sm leading-relaxed italic">"{support.message}"</p>
+                              </div>
+                            )}
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                              {support.timestamp?.toDate().toLocaleString() || 'Саяхан'}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  <div className="rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #78350f, #b45309)' }}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                    <h3 className="font-display font-bold text-2xl mb-6 relative">Нийт Дэмжлэг</h3>
+                    <div className="space-y-6 relative">
+                      <div>
+                        <p className="text-amber-300 text-xs font-bold uppercase tracking-widest mb-1">Нийт дүн</p>
+                        <p className="text-3xl font-bold">{formatCurrency(stats.totalAmount)}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-amber-300 text-xs font-bold uppercase tracking-widest mb-1">Дэмжигчид</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSupporters)}</p>
+                        </div>
+                        <div>
+                          <p className="text-amber-300 text-xs font-bold uppercase tracking-widest mb-1">Гишүүд</p>
+                          <p className="text-xl font-bold">{formatNumber(stats.totalSubscribers)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-display font-bold text-lg text-slate-900">Дэлгүүр</h3>
+                      <button onClick={() => setActiveTab('shop')} className="text-xs font-bold text-amber-600 hover:underline">Бүгдийг харах</button>
+                    </div>
+                    <div className="space-y-4">
+                      {products.length === 0 ? (
+                        <p className="text-xs text-slate-400 text-center py-4">Одоогоор бараа байхгүй байна</p>
+                      ) : (
+                        products.slice(0, 2).map(product => (
+                          <div key={product.id} className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                              <Package size={20} className="text-amber-600" />
+                            </div>
+                            <div className="flex-grow">
+                              <p className="text-sm font-bold text-slate-900 leading-tight">{product.name}</p>
+                              <p className="text-xs font-bold text-amber-600">{Number(product.price).toLocaleString()}₮</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <h3 className="font-display font-bold text-lg text-slate-900 mb-4">Ангилал</h3>
+                    <div className="space-y-3">
+                      {(Object.keys(TIER_CONFIG) as SupportTier[]).map(tier => (
+                        <div key={tier} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", TIER_CONFIG[tier].color)} />
+                            <span className="text-sm font-medium text-slate-600">{TIER_CONFIG[tier].label}</span>
+                          </div>
+                          <span className="text-sm font-bold text-slate-900">{stats.tierCounts[tier] || 0}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             {activeTab === 'home' && homePageIndex === 1 && (
@@ -5240,6 +6405,7 @@ export default function App() {
 
             {activeTab === 'membership' && (
               <div className="relative space-y-16 pb-32 overflow-hidden">
+                <FeatureSupportBar featureId="membership" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                 {/* Decorative Background Elements */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none overflow-hidden">
                   <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/5 rounded-full blur-[120px]" />
@@ -6677,6 +7843,7 @@ export default function App() {
 
             {activeTab === 'website' && (
               <div className="max-w-4xl mx-auto space-y-8 pb-24">
+                <FeatureSupportBar featureId="website" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                 {/* Sub-tabs */}
                 <div className="flex bg-slate-100 p-1 rounded-2xl max-w-md mx-auto">
                   <button
@@ -7005,6 +8172,7 @@ export default function App() {
 
               return (
                 <div className="relative min-h-full flex flex-col bg-slate-50 overflow-hidden">
+                  <FeatureSupportBar featureId="lucky_draw" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
 
                   {/* Subtle top accent */}
                   <div className="absolute top-0 left-0 right-0 h-40 pointer-events-none"
@@ -7188,6 +8356,7 @@ export default function App() {
 
             {activeTab === 'lottery' && (
               <div className="max-w-sm mx-auto px-4 py-6 space-y-6 pb-24">
+                <FeatureSupportBar featureId="lottery" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
 
                 {/* ── 10-digit Slot Machine ── */}
                 <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
@@ -7398,16 +8567,41 @@ export default function App() {
 
               return (
                 <div className="max-w-sm mx-auto px-4 py-6 space-y-5 pb-24">
+                  <FeatureSupportBar featureId="askify" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
 
                   {/* Header */}
-                  <div className="flex items-center gap-3 px-1">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
-                      <Brain size={20} className="text-white" />
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
+                        <Brain size={20} className="text-white" />
+                      </div>
+                      <div>
+                        <h2 className="font-black text-slate-900 text-xl">Askify</h2>
+                        <p className="text-slate-400 text-xs">{allQuestions.length} асуулт байна</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="font-black text-slate-900 text-xl">Askify</h2>
-                      <p className="text-slate-400 text-xs">{allQuestions.length} асуулт байна</p>
-                    </div>
+                    {(askifySocialLinks.facebook || askifySocialLinks.youtube || askifySocialLinks.instagram) && (
+                      <div className="flex items-center gap-2">
+                        {askifySocialLinks.facebook && (
+                          <a href={askifySocialLinks.facebook} target="_blank" rel="noopener noreferrer"
+                            className="w-9 h-9 rounded-2xl flex items-center justify-center bg-blue-50 border border-blue-100">
+                            <Facebook size={16} style={{ color: '#1877f2' }} />
+                          </a>
+                        )}
+                        {askifySocialLinks.youtube && (
+                          <a href={askifySocialLinks.youtube} target="_blank" rel="noopener noreferrer"
+                            className="w-9 h-9 rounded-2xl flex items-center justify-center bg-red-50 border border-red-100">
+                            <Youtube size={16} style={{ color: '#ff0000' }} />
+                          </a>
+                        )}
+                        {askifySocialLinks.instagram && (
+                          <a href={askifySocialLinks.instagram} target="_blank" rel="noopener noreferrer"
+                            className="w-9 h-9 rounded-2xl flex items-center justify-center bg-pink-50 border border-pink-100">
+                            <Instagram size={16} style={{ color: '#e1306c' }} />
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Sub-tabs */}
@@ -7460,6 +8654,18 @@ export default function App() {
                             placeholder="Таны нэр"
                             className="w-full mt-1 px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-400 outline-none text-sm"
                           />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Social Media Link (заавал биш)</label>
+                          <div className="relative mt-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base">🔗</span>
+                            <input value={addQForm.socialLink} onChange={e => setAddQForm(f=>({...f, socialLink: e.target.value}))}
+                              placeholder="https://facebook.com/..."
+                              className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 focus:border-violet-400 outline-none text-sm"
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">Facebook, Instagram, YouTube эсвэл вэбсайт холбоосоо оруулна уу</p>
                         </div>
 
                         {isOwner ? (
@@ -7559,9 +8765,17 @@ export default function App() {
                           <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                             <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #7c3aed, #a855f7)' }} />
                             <div className="p-5">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                                {qIndex + 1}-р асуулт · {currentQ.addedBy} оруулсан
-                              </p>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                  {qIndex + 1}-р асуулт · {currentQ.addedBy} оруулсан
+                                </p>
+                                {currentQ.socialLink && (
+                                  <a href={currentQ.socialLink} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-100"
+                                    onClick={e => e.stopPropagation()}
+                                  >🔗 Link</a>
+                                )}
+                              </div>
                               <p className="font-black text-slate-900 text-base leading-snug">{currentQ.question}</p>
                             </div>
                           </div>
@@ -7727,6 +8941,14 @@ export default function App() {
                         <input value={addQForm.addedBy} onChange={e=>setAddQForm(f=>({...f, addedBy:e.target.value}))}
                           placeholder="Нэр" className="w-full mt-1 px-3 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
                       </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Social Link (заавал биш)</label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🔗</span>
+                          <input value={addQForm.socialLink} onChange={e=>setAddQForm(f=>({...f, socialLink:e.target.value}))}
+                            placeholder="https://facebook.com/..." className="w-full pl-8 pr-3 py-2.5 rounded-xl border border-slate-200 outline-none text-sm" />
+                        </div>
+                      </div>
                       <motion.button whileTap={{ scale:0.97 }} onClick={handleAddQuestionWithPay}
                         disabled={!addQForm.question||addQForm.answers.some(a=>!a)||!addQForm.addedBy}
                         className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-40"
@@ -7739,10 +8961,13 @@ export default function App() {
             </AnimatePresence>
 
             {activeTab === 'birthday' && (
-              <BirthdayView
-                birthdays={birthdays}
-                onAddBirthday={() => setShowAddBirthdayModal(true)}
-              />
+              <div>
+                <FeatureSupportBar featureId="birthday" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
+                <BirthdayView
+                  birthdays={birthdays}
+                  onAddBirthday={() => setShowAddBirthdayModal(true)}
+                />
+              </div>
             )}
 
             {/* ── Player name modal ── */}
@@ -8257,6 +9482,7 @@ export default function App() {
 
             {activeTab === 'magic' && (
               <div className="max-w-2xl mx-auto space-y-6 pb-24">
+                <FeatureSupportBar featureId="magic" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                 {/* Header */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
@@ -8471,6 +9697,7 @@ export default function App() {
               };
               return (
                 <div className="space-y-4 pb-28">
+                  <FeatureSupportBar featureId="zavgui" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                   {/* Header + Sub-tabs */}
                   <div className="rounded-3xl overflow-hidden shadow-lg" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' }}>
                     <div className="px-6 pt-5 pb-4 text-center">
@@ -8884,6 +10111,7 @@ export default function App() {
 
             {activeTab === 'learn' && (
               <div className="max-w-lg mx-auto px-4 py-8 pb-24 space-y-6">
+                <FeatureSupportBar featureId="learn" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
 
                 {/* Header */}
                 <div className="relative rounded-[2rem] overflow-hidden p-8 text-white"
@@ -9030,6 +10258,7 @@ export default function App() {
 
               return (
                 <div className="max-w-2xl mx-auto space-y-6 pb-24">
+                  <FeatureSupportBar featureId="games" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                   {/* Header */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center">
@@ -9407,6 +10636,7 @@ export default function App() {
 
             {activeTab === 'shop' && (
               <div className="max-w-2xl mx-auto space-y-5 pb-24">
+                <FeatureSupportBar featureId="shop" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -9481,44 +10711,195 @@ export default function App() {
                       </motion.div>
                     )}
 
-                    {products.length === 0 ? (
-                      <div className="bg-white rounded-3xl border border-slate-100 p-16 text-center">
-                        <ShoppingBag size={48} className="text-slate-200 mx-auto mb-4" />
-                        <p className="text-slate-400 font-medium">Одоогоор бараа байхгүй байна</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4">
-                        {products.map((product) => (
-                          <motion.div key={product.id}
-                            whileHover={{ y: -8 }}
-                            className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300"
+                    {/* sync refs — always fresh values inside touch handlers */}
+                    {(shopPageIndexRef.current = shopPageIndex, shopProductsRef.current = products, null)}
+
+                    {/* ── Mall-style floor navigation ── */}
+                    <div
+                      className="relative overflow-hidden rounded-3xl bg-white border border-slate-100 shadow-sm"
+                      style={{ minHeight: 480 }}
+                      onTouchStart={e => {
+                        shopSwipeX.current = e.touches[0].clientX;
+                        shopSwipeY.current = e.touches[0].clientY;
+                      }}
+                      onTouchEnd={e => {
+                        if (shopSwipeX.current == null) return;
+                        const dx = e.changedTouches[0].clientX - shopSwipeX.current;
+                        const dy = e.changedTouches[0].clientY - (shopSwipeY.current ?? 0);
+                        shopSwipeX.current = null;
+                        shopSwipeY.current = null;
+                        if (Math.abs(dy) > Math.abs(dx)) return;
+                        if (Math.abs(dx) < 40) return;
+                        const curIdx = shopPageIndexRef.current;
+                        const maxIdx = shopProductsRef.current.length;
+                        if (dx < 0 && curIdx < maxIdx) {
+                          setShopPageDir(1);
+                          setShopPageIndex(curIdx + 1);
+                        } else if (dx > 0 && curIdx > 0) {
+                          setShopPageDir(-1);
+                          setShopPageIndex(curIdx - 1);
+                        }
+                      }}
+                    >
+                      <AnimatePresence mode="wait" custom={shopPageDir}>
+                        {shopPageIndex === 0 ? (
+                          /* ── Intro page ── */
+                          <motion.div key="shop-intro"
+                            custom={shopPageDir}
+                            initial={{ x: shopPageDir * 100 + '%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: shopPageDir * -100 + '%', opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            className="flex flex-col"
                           >
-                            <div className="h-36 bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center relative group">
-                              <div className="absolute inset-0 bg-brand-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              {product.image ? (
-                                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                            {/* Cover banner */}
+                            <div className="h-44 bg-gradient-to-br from-brand-600 to-indigo-700 flex flex-col items-center justify-center relative overflow-hidden">
+                              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 0,transparent 50%)', backgroundSize: '20px 20px' }} />
+                              <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-3 shadow-xl">
+                                <ShoppingBag size={36} className="text-white" />
+                              </div>
+                              <h2 className="font-display font-black text-white text-2xl tracking-tight">Г. Жавхлан Дэлгүүр</h2>
+                              <p className="text-white/70 text-sm mt-1">Бараа · Хүргэлт · Захиалга</p>
+                            </div>
+                            {/* Store info */}
+                            <div className="p-5 space-y-4">
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-slate-50 rounded-2xl p-3 text-center">
+                                  <p className="font-black text-slate-900 text-xl">{products.length}</p>
+                                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Бараа</p>
+                                </div>
+                                <div className="bg-brand-50 rounded-2xl p-3 text-center">
+                                  <p className="font-black text-brand-600 text-xl">24/7</p>
+                                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Захиалга</p>
+                                </div>
+                                <div className="bg-emerald-50 rounded-2xl p-3 text-center">
+                                  <p className="font-black text-emerald-600 text-xl">🚚</p>
+                                  <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Хүргэлт</p>
+                                </div>
+                              </div>
+                              {products.length > 0 && (
+                                <div className="flex items-center justify-center gap-2 py-2">
+                                  <span className="text-slate-300 text-xs">←</span>
+                                  <span className="text-slate-400 text-xs font-medium">Swipe хийж бараа үзэх</span>
+                                  <span className="text-slate-300 text-xs">→</span>
+                                </div>
+                              )}
+                              {products.length === 0 ? (
+                                <div className="py-10 text-center">
+                                  <Package size={40} className="text-slate-200 mx-auto mb-3" />
+                                  <p className="text-slate-400 font-medium text-sm">Одоогоор бараа байхгүй байна</p>
+                                </div>
                               ) : (
-                                <Package size={40} className="text-brand-200" />
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Бүх бараа ({products.length})</p>
+                                  <div className="space-y-2">
+                                    {products.map((product, i) => (
+                                      <button key={product.id}
+                                        onClick={() => { setShopPageDir(1); setShopPageIndex(i + 1); }}
+                                        className="w-full flex items-center gap-3 p-3 bg-slate-50 hover:bg-brand-50 rounded-2xl transition-all active:scale-[0.98] text-left"
+                                      >
+                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                                          {product.image ? <img src={product.image} alt={product.name} className="w-full h-full object-cover" /> : <Package size={20} className="text-slate-300" />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-bold text-slate-900 text-sm leading-tight truncate">{product.name}</p>
+                                          <p className="text-brand-600 font-black text-sm">{Number(product.price).toLocaleString()}₮</p>
+                                        </div>
+                                        <div className="shrink-0 w-7 h-7 rounded-xl bg-white border border-slate-100 flex items-center justify-center">
+                                          <ChevronRight size={14} className="text-slate-400" />
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
-                            <div className="p-3">
-                              <h3 className="font-display font-bold text-slate-900 text-sm mb-1 leading-tight line-clamp-2">{product.name}</h3>
-                              <div className="flex items-baseline gap-0.5 mb-3">
-                                <span className="text-lg font-black text-brand-600">{Number(product.price).toLocaleString()}</span>
-                                <span className="text-[10px] font-bold text-brand-400">₮</span>
-                              </div>
-                              <button
-                                onClick={() => { setSelectedProduct(product); setOrderType('direct'); setOrderForm({ phone: '', address: '' }); }}
-                                className="w-full py-2.5 bg-slate-900 hover:bg-brand-600 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
-                              >
-                                <ShoppingBag size={14} />
-                                Захиалах
-                              </button>
-                            </div>
                           </motion.div>
-                        ))}
-                      </div>
-                    )}
+                        ) : (
+                          /* ── Product page ── */
+                          (() => {
+                            const product = products[shopPageIndex - 1];
+                            if (!product) return null;
+                            return (
+                              <motion.div key={`shop-product-${shopPageIndex}`}
+                                custom={shopPageDir}
+                                initial={{ x: shopPageDir * 100 + '%', opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                exit={{ x: shopPageDir * -100 + '%', opacity: 0 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                className="flex flex-col"
+                              >
+                                {/* Product image header */}
+                                <div className="h-56 relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                                  {product.image ? (
+                                    <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Package size={64} className="text-slate-300" />
+                                  )}
+                                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+                                  <div className="absolute bottom-3 left-4">
+                                    <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">{shopPageIndex}/{products.length}</p>
+                                    <p className="text-white font-black text-xl leading-tight">{product.name}</p>
+                                  </div>
+                                  <button onClick={() => { setShopPageDir(-1); setShopPageIndex(0); }}
+                                    className="absolute top-3 right-3 w-8 h-8 bg-black/30 backdrop-blur-sm rounded-xl flex items-center justify-center text-white">
+                                    <X size={16} />
+                                  </button>
+                                </div>
+                                {/* Product details */}
+                                <div className="p-5 space-y-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <h3 className="font-display font-black text-slate-900 text-xl leading-tight flex-1">{product.name}</h3>
+                                    <div className="text-right shrink-0">
+                                      <p className="font-black text-brand-600 text-2xl leading-none">{Number(product.price).toLocaleString()}</p>
+                                      <p className="text-brand-400 text-xs font-bold">төгрөг</p>
+                                    </div>
+                                  </div>
+                                  {product.description && (
+                                    <p className="text-slate-500 text-sm leading-relaxed">{product.description}</p>
+                                  )}
+                                  <button
+                                    onClick={() => { setSelectedProduct(product); setOrderType('direct'); setOrderForm({ phone: '', address: '' }); }}
+                                    className="w-full py-4 bg-brand-600 hover:bg-brand-700 text-white font-black rounded-2xl text-sm transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-brand-600/20"
+                                  >
+                                    <ShoppingBag size={16} />
+                                    Захиалах
+                                  </button>
+                                  <div className="flex items-center justify-center gap-3 pt-1">
+                                    {shopPageIndex > 1 && <span className="text-slate-300 text-xs">← {products[shopPageIndex - 2]?.name}</span>}
+                                    {shopPageIndex < products.length && <span className="text-slate-300 text-xs ml-auto">{products[shopPageIndex]?.name} →</span>}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })()
+                        )}
+                      </AnimatePresence>
+                      {/* Bottom nav bar */}
+                      {products.length > 0 && (
+                        <div className="absolute bottom-0 inset-x-0 bg-white border-t border-slate-100 px-4 py-3 flex items-center justify-between">
+                          <button
+                            onClick={() => { setShopPageDir(-1); setShopPageIndex(p => Math.max(0, p - 1)); }}
+                            disabled={shopPageIndex === 0}
+                            className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold disabled:opacity-30 transition-all active:scale-[0.96]"
+                          >← Өмнөх</button>
+                          {/* Dot indicators */}
+                          <div className="flex items-center gap-1.5">
+                            {[0, ...products.map((_, i) => i + 1)].map(i => (
+                              <button key={i}
+                                onClick={() => { setShopPageDir(i > shopPageIndex ? 1 : -1); setShopPageIndex(i); }}
+                                className={`rounded-full transition-all ${i === shopPageIndex ? 'w-5 h-2 bg-brand-600' : 'w-2 h-2 bg-slate-200'}`}
+                              />
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => { setShopPageDir(1); setShopPageIndex(p => Math.min(products.length, p + 1)); }}
+                            disabled={shopPageIndex >= products.length}
+                            className="px-4 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-30 transition-all active:scale-[0.96] bg-brand-600"
+                          >Дараах →</button>
+                        </div>
+                      )}
+                    </div>
                   </>
                 )}
 
@@ -9732,6 +11113,7 @@ export default function App() {
 
             {activeTab === 'citizens' && (
               <div className="max-w-2xl mx-auto space-y-6 pb-24">
+                <FeatureSupportBar featureId="citizens" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
                 <div className="flex items-center justify-between">
                   <h2 className="font-display font-bold text-2xl text-slate-900 flex items-center gap-2">
                     <Users className="text-brand-600" size={24} />
@@ -9778,6 +11160,104 @@ export default function App() {
             )}
 
             {activeTab === 'profile' && (() => {
+              // ── Profile type selector ──
+              if (!profileViewUser || (appUser && profileViewUser?.username === appUser?.username)) {
+                // Show type selector only on own profile landing
+              }
+              // ── Shared tab switcher ──
+              const ProfileTabs = ({ active }: { active: 'regular' | 'pro' | 'prime' }) => (
+                <div className="flex bg-slate-100 rounded-2xl p-1 gap-1">
+                  {(['regular', 'pro', 'prime'] as const).map(t => {
+                    const isActive = active === t;
+                    const label = t === 'regular' ? 'Profile' : t === 'pro' ? <>Profile <span className="text-[9px] align-super font-black">PRO</span></> : <>Profile <span className="text-[9px] align-super font-black">PRIME</span></>;
+                    const activeColor = t === 'pro' ? 'text-violet-600' : t === 'prime' ? 'text-amber-600' : 'text-slate-900';
+                    return (
+                      <button key={t} onClick={() => setProfileType(t)}
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all ${isActive ? `bg-white shadow-sm ${activeColor}` : 'text-slate-400'}`}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+
+              // Pro placeholder
+              if (profileType === 'pro') {
+                return (
+                  <div className="max-w-md mx-auto space-y-4 pb-24">
+                    <ProfileTabs active="pro" />
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="h-36 flex items-center justify-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#4c1d95,#7c3aed,#a78bfa)' }}>
+                        <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at 70% 30%, white, transparent 60%)' }} />
+                        <div className="text-center relative z-10">
+                          <div className="text-5xl mb-2">🪄</div>
+                          <p className="text-white font-black text-sm tracking-widest">PROFILE PRO</p>
+                        </div>
+                      </div>
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-center">
+                          <span className="px-4 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-600 text-xs font-black tracking-wider">УДАХГҮЙ · COMING SOON</span>
+                        </div>
+                        <p className="text-slate-900 font-black text-xl text-center">Profile Pro</p>
+                        <p className="text-slate-500 text-sm leading-relaxed text-center">Хэрэглэгч өөрийн хувилбарыг Scan оруулж дэлгүүр хэсэхэд тухайн хувцас таарах, тохирох үгүйг өмсөж үзэх боломжтой.</p>
+                        <div className="grid grid-cols-3 gap-3 mt-2">
+                          {[
+                            { icon: '📷', label: 'Scan хийх' },
+                            { icon: '👗', label: 'Хувцас туршилт' },
+                            { icon: '🛍️', label: 'Онлайн хэсэх' },
+                          ].map((f, i) => (
+                            <div key={i} className="bg-violet-50 rounded-2xl p-3 text-center">
+                              <div className="text-2xl mb-1">{f.icon}</div>
+                              <p className="text-violet-400 text-[10px] font-bold leading-tight">{f.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Prime placeholder
+              if (profileType === 'prime') {
+                return (
+                  <div className="max-w-md mx-auto space-y-4 pb-24">
+                    <ProfileTabs active="prime" />
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="h-36 flex items-center justify-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#78350f,#b45309,#f59e0b,#fcd34d)' }}>
+                        <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(circle at 30% 60%, white, transparent 55%)' }} />
+                        <div className="text-center relative z-10">
+                          <div className="text-5xl mb-2">🌐</div>
+                          <p className="text-white font-black text-sm tracking-widest">PROFILE PRIME</p>
+                        </div>
+                      </div>
+                      <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-center">
+                          <span className="px-4 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-black tracking-wider">2030 ОНД НЭЭЛТЭЭ ХИЙНЭ</span>
+                        </div>
+                        <p className="text-slate-900 font-black text-xl text-center">Profile Prime</p>
+                        <p className="text-slate-500 text-sm leading-relaxed text-center">Хэрэглэгч өөрийн хувилбараар "Cyber City" дотор орж тоглох, дэлгүүр хэсэх бүх боломжтой танилцах болно.</p>
+                        <div className="grid grid-cols-3 gap-3 mt-2">
+                          {[
+                            { icon: '🏙️', label: 'Cyber City' },
+                            { icon: '🧍', label: 'Хувилбар' },
+                            { icon: '🎮', label: 'Тоглоом' },
+                          ].map((f, i) => (
+                            <div key={i} className="bg-amber-50 rounded-2xl p-3 text-center">
+                              <div className="text-2xl mb-1">{f.icon}</div>
+                              <p className="text-amber-500 text-[10px] font-bold leading-tight">{f.label}</p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-2xl bg-slate-50 border border-slate-100">
+                          <span className="text-slate-400 text-xs font-bold">2030 · Cyber City нэгдсэн хувийн хаяг</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               const pUser = profileViewUser || appUser;
               const isOwnProfile = appUser && pUser && pUser.username === appUser.username;
               const citizen = pUser ? uniqueCitizens.find(c => c.name === pUser.name && c.phone === pUser.phone) : null;
@@ -9785,6 +11265,7 @@ export default function App() {
               if (isOwnProfile && !userHasSubscription && !isOwner) {
                 return (
                   <div className="max-w-md mx-auto space-y-4 pb-24">
+                    <ProfileTabs active="regular" />
                     <button onClick={() => { setProfileViewUser(null); setActiveTab('home'); }} className="flex items-center gap-2 text-slate-400 hover:text-brand-600 transition-colors font-bold text-sm">
                       <ChevronRight size={16} className="rotate-180" /> Буцах
                     </button>
@@ -9807,6 +11288,8 @@ export default function App() {
               }
               return (
                 <div className="max-w-md mx-auto space-y-4 pb-24">
+                  {/* Profile type tab switcher */}
+                  <ProfileTabs active="regular" />
                   {/* Back button */}
                   <button
                     onClick={() => { setProfileViewUser(null); setActiveTab('citizens'); }}
@@ -10024,6 +11507,265 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {activeTab === 'battle' && (() => {
+              const myStats = appUser ? battleUsers.find(u => u.username === appUser.username) : null;
+              const inviteLink = appUser ? `${window.location.origin}?ref=${appUser.username}` : '';
+              const sortedUsers = [...battleUsers].sort((a, b) => (b.hp + b.armor * 2 + b.attack * 5 + b.survivalChance) - (a.hp + a.armor * 2 + a.attack * 5 + a.survivalChance));
+              const isBattleAdmin = isAdminUnlocked || appUser?.username === 'javkhlanbusiness';
+              const SUBTABS: { id: typeof battleSubTab; label: string; emoji: string }[] = [
+                { id: 'register', label: 'Бүртгүүлэх', emoji: '🛡️' },
+                { id: 'list',     label: 'Жагсаалт',   emoji: '📋' },
+                ...(isBattleAdmin ? [{ id: 'start' as typeof battleSubTab, label: 'Эхлүүлэх', emoji: '⚔️' }] : []),
+                { id: 'leaderboard', label: 'Тэргүүлэгчид', emoji: '🏆' },
+              ];
+              return (
+                <div className="max-w-3xl mx-auto pb-24">
+                  <FeatureSupportBar featureId="battle" featureSupport={featureSupport} featureLiking={featureLiking} userId={appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon'} onLike={handleFeatureLike} onSupport={handleFeatureSupport} />
+                  {/* Header */}
+                  <div className="rounded-[2rem] p-7 text-white relative overflow-hidden mb-5" style={{ background: 'linear-gradient(135deg, #1e1b4b, #7c3aed, #dc2626)' }}>
+                    <div className="absolute inset-0 opacity-10 flex items-center justify-center"><Swords size={180} /></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-white/20 rounded-xl"><Swords size={22} /></div>
+                        <h2 className="font-display font-black text-2xl">Ялагч Тодруулах</h2>
+                      </div>
+                      <p className="text-white/60 text-sm">Хамгийн сүүлд үлдсэн нь ялна</p>
+                      <div className="mt-3 flex items-center gap-3 text-xs font-bold">
+                        <span className="bg-white/15 px-3 py-1 rounded-full">{battleUsers.length} бүртгэлтэй</span>
+                        <span className="bg-white/15 px-3 py-1 rounded-full">{battleResults.length} тулаан болсон</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sub-tabs */}
+                  <div className="flex bg-slate-100 p-1 rounded-2xl mb-5">
+                    {SUBTABS.map(t => (
+                      <button key={t.id} onClick={() => setBattleSubTab(t.id)}
+                        className={cn('flex-1 py-2.5 px-2 rounded-xl text-xs font-black transition-all flex flex-col items-center gap-0.5',
+                          battleSubTab === t.id ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600')}>
+                        <span>{t.emoji}</span>
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <AnimatePresence mode="wait">
+
+                  {/* ── TAB 1: БҮРТГҮҮЛЭХ ── */}
+                  {battleSubTab === 'register' && (
+                    <motion.div key="reg" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
+                      {appUser ? (
+                        myStats ? (
+                          <>
+                            {/* My stats card */}
+                            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                <ShieldIcon size={18} className="text-purple-500" />
+                                Миний мэдээлэл
+                                <span className="ml-auto text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">
+                                  {myStats.heroType === 'ranged' ? '🏹 Холын' : '⚔️ Ойрын'}
+                                </span>
+                              </h3>
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: 'HP', value: myStats.hp, icon: HeartPulse, color: 'text-rose-500', bg: 'bg-rose-50', bar: 'bg-rose-500', max: 200 },
+                                  { label: 'Armor', value: myStats.armor, icon: ShieldIcon, color: 'text-blue-500', bg: 'bg-blue-50', bar: 'bg-blue-500', max: 50 },
+                                  { label: 'Attack', value: myStats.attack, icon: Sword, color: 'text-orange-500', bg: 'bg-orange-50', bar: 'bg-orange-500', max: 20 },
+                                  { label: 'Survival', value: `${myStats.survivalChance}%`, icon: Sparkles, color: 'text-emerald-500', bg: 'bg-emerald-50', bar: 'bg-emerald-500', max: 100 },
+                                ].map(({ label, value, icon: Icon, color, bg, bar, max }) => (
+                                  <div key={label} className={`${bg} rounded-2xl p-4`}>
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                      <Icon size={14} className={color} />
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+                                    </div>
+                                    <p className={`font-black text-2xl ${color}`}>{value}</p>
+                                    {typeof value === 'number' && (
+                                      <div className="mt-2 h-1.5 bg-white/60 rounded-full overflow-hidden">
+                                        <div className={`h-full ${bar} rounded-full`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Invite link */}
+                            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                              <p className="text-xs font-black text-purple-600 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                <LinkIcon size={12} /> Найзаа урих холбоос
+                              </p>
+                              <div className="flex items-center gap-2 mb-3">
+                                <p className="text-xs text-slate-600 flex-1 truncate font-mono bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">{inviteLink}</p>
+                                <button onClick={() => { navigator.clipboard.writeText(inviteLink); alert('Холбоос хуулагдлаа!'); }}
+                                  className="p-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shrink-0">
+                                  <Copy size={15} />
+                                </button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-xs text-slate-500">
+                                <span className="bg-slate-50 rounded-xl px-2 py-1.5">👥 Найз урих → +1 HP</span>
+                                <span className="bg-slate-50 rounded-xl px-2 py-1.5">🛡️ Найзын найз → +1 Armor</span>
+                                <span className="bg-slate-50 rounded-xl px-2 py-1.5">⚔️ 10,000₮ дэмжлэг → +1 Attack</span>
+                                <span className="bg-slate-50 rounded-xl px-2 py-1.5">✨ Найзын дэмжлэг → +1% Survival</span>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 text-center space-y-4">
+                            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center text-3xl" style={{ background: 'linear-gradient(135deg,#1e1b4b,#7c3aed)' }}>⚔️</div>
+                            <div>
+                              <p className="font-black text-slate-900 text-lg">Тулааны системд нэгдэх</p>
+                              <p className="text-slate-400 text-sm mt-1">Баатар сонгоод тулаанд орно уу</p>
+                            </div>
+                            <button onClick={() => { setBattleRegisterForm(f => ({ ...f, name: appUser.name || '', phone: '' })); setShowBattleRegister(true); }}
+                              className="w-full py-4 rounded-2xl font-black text-white text-sm"
+                              style={{ background: 'linear-gradient(135deg,#7c3aed,#dc2626)' }}>
+                              Бүртгүүлэх
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 text-center space-y-4">
+                          <p className="text-slate-400 text-sm">Бүртгүүлэхийн тулд нэвтэрнэ үү.</p>
+                          <button onClick={() => { setShowBattleRegister(true); }}
+                            className="px-8 py-3 rounded-2xl font-black text-white text-sm"
+                            style={{ background: 'linear-gradient(135deg,#7c3aed,#dc2626)' }}>
+                            Бүртгүүлэх
+                          </button>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* ── TAB 2: ЖАГСААЛТ ── */}
+                  {battleSubTab === 'list' && (
+                    <motion.div key="list" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                      className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5">
+                      <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                        <ShieldIcon size={18} className="text-purple-500" />
+                        Бүртгэлтэй тоглогчид
+                        <span className="ml-auto text-xs font-black bg-purple-50 text-purple-600 px-2.5 py-1 rounded-full">{sortedUsers.length}</span>
+                      </h3>
+                      {sortedUsers.length === 0 ? (
+                        <p className="text-slate-400 text-center py-10 text-sm">Тоглогч байхгүй байна</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {sortedUsers.map((u, idx) => (
+                            <div key={u.uid} className={cn('flex items-center gap-3 p-3 rounded-2xl',
+                              idx === 0 ? 'bg-amber-50 border border-amber-100' : idx === 1 ? 'bg-slate-100' : idx === 2 ? 'bg-orange-50 border border-orange-100' : 'bg-slate-50')}>
+                              <span className={cn('w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0',
+                                idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-400 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-200 text-slate-500')}>
+                                {idx + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-bold text-slate-900 text-sm truncate">{u.name}</p>
+                                  <span className="text-[10px]">{u.heroType === 'ranged' ? '🏹' : '⚔️'}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400">@{u.username}</p>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs font-bold shrink-0">
+                                <span className="text-rose-500">❤️{u.hp}</span>
+                                <span className="text-blue-500">🛡️{u.armor}</span>
+                                <span className="text-orange-500">⚔️{u.attack}</span>
+                                <span className="text-emerald-500">✨{u.survivalChance}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* ── TAB 3: ЭХЛҮҮЛЭХ (admin only) ── */}
+                  {battleSubTab === 'start' && isBattleAdmin && (
+                    <motion.div key="start" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
+                      <div className="rounded-3xl p-6 space-y-4" style={{ background: 'linear-gradient(135deg,#0f0c29,#302b63)' }}>
+                        <h3 className="font-black text-white flex items-center gap-2"><Swords size={18} /> Тулаан эхлүүлэх</h3>
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div className="bg-white/10 rounded-2xl p-3">
+                            <p className="text-white font-black text-2xl">{battleUsers.length}</p>
+                            <p className="text-white/50 text-[10px] mt-0.5">Бүртгэлтэй</p>
+                          </div>
+                          <div className="bg-white/10 rounded-2xl p-3">
+                            <p className="text-white font-black text-2xl">8</p>
+                            <p className="text-white/50 text-[10px] mt-0.5">Бот</p>
+                          </div>
+                          <div className="bg-white/10 rounded-2xl p-3">
+                            <p className="text-white font-black text-2xl">{battleUsers.length + 8}</p>
+                            <p className="text-white/50 text-[10px] mt-0.5">Нийт</p>
+                          </div>
+                        </div>
+                        <motion.button whileTap={{ scale: 0.97 }} onClick={() => { runBattle(); setBattleSubTab('register'); }} disabled={isBattleRunning}
+                          className="w-full py-5 rounded-2xl font-black text-white text-lg disabled:opacity-50 transition-all"
+                          style={{ background: 'linear-gradient(135deg, #dc2626, #7c3aed)', boxShadow: '0 8px 30px rgba(220,38,38,0.3)' }}>
+                          {isBattleRunning ? '⚔️ Тулаан явагдаж байна...' : '🏁 Тулаан Эхлүүлэх'}
+                        </motion.button>
+                      </div>
+                      {battleWinner && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-3xl p-5 text-center space-y-1">
+                          <p className="text-amber-500 text-xs font-black uppercase tracking-widest">🏆 Сүүлийн ялагч</p>
+                          <p className="font-black text-slate-900 text-2xl">{battleWinner.name}</p>
+                          <p className="text-slate-400 text-sm">@{battleWinner.username}</p>
+                        </div>
+                      )}
+                      {battleLog.length > 0 && (
+                        <div className="bg-slate-900 rounded-3xl p-5 max-h-60 overflow-y-auto space-y-1">
+                          {battleLog.map((line, i) => (
+                            <p key={i} className="text-slate-400 text-[11px] font-mono leading-relaxed">{line}</p>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* ── TAB 4: ТЭРГҮҮЛЭГЧИД ── */}
+                  {battleSubTab === 'leaderboard' && (
+                    <motion.div key="lb" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
+                      {/* Header card */}
+                      <div className="rounded-3xl p-6 text-white text-center relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#78350f,#b45309,#d97706)' }}>
+                        <div className="absolute inset-0 opacity-10 flex items-center justify-center"><Trophy size={160} /></div>
+                        <div className="relative z-10">
+                          <div className="text-5xl mb-2">🏆</div>
+                          <h3 className="font-display font-black text-2xl">Тэргүүлэгчид</h3>
+                          <p className="text-white/60 text-sm mt-1">Өнгөрсөн тулааны ялагчид</p>
+                        </div>
+                      </div>
+                      {battleResults.length === 0 ? (
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-10 text-center">
+                          <div className="text-4xl mb-3">⚔️</div>
+                          <p className="text-slate-400 text-sm">Одоогоор тулаан болоогүй байна</p>
+                        </div>
+                      ) : (
+                        battleResults.map((r, idx) => {
+                          const date = r.id ? new Date(r.id).toLocaleDateString('mn-MN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                          return (
+                            <div key={r.id} className={cn('bg-white rounded-3xl border shadow-sm p-5 flex items-center gap-4',
+                              idx === 0 ? 'border-amber-200 bg-amber-50' : 'border-slate-100')}>
+                              <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black shrink-0',
+                                idx === 0 ? 'bg-amber-400 text-white' : idx === 1 ? 'bg-slate-300 text-white' : idx === 2 ? 'bg-amber-700 text-white' : 'bg-slate-100 text-slate-500')}>
+                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn('font-black text-lg truncate', idx === 0 ? 'text-amber-800' : 'text-slate-900')}>
+                                  {r.winner?.name || '—'}
+                                </p>
+                                <p className="text-slate-400 text-xs">@{r.winner?.username || '—'}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-bold text-slate-500">{r.participants || 0} оролцогч</p>
+                                <p className="text-[10px] text-slate-300 mt-0.5">{date}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </motion.div>
+                  )}
+
+                  </AnimatePresence>
+                </div>
+              );
+            })()}
 
             {activeTab === 'tasks' && (
               <div className="max-w-2xl mx-auto space-y-8 pb-24">
@@ -10860,65 +12602,3193 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Page Selector Modal */}
+        {/* (page selector removed — double-tap now opens Cyber City directly) */}
+
+        {/* ===== BATTLE ARENA — FULL SCREEN ===== */}
         <AnimatePresence>
-          {showPageSelector && (
-            <>
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                onClick={() => setShowPageSelector(false)}
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[300]" />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                className="fixed inset-0 z-[301] flex items-center justify-center p-6 pointer-events-none"
-              >
-                <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-xs pointer-events-auto">
-                  <div className="flex items-center justify-between mb-5">
-                    <p className="font-black text-slate-900 text-lg">Хуудас сонгох</p>
-                    <button onClick={() => setShowPageSelector(false)} className="p-1.5 hover:bg-slate-100 rounded-full"><X size={18} className="text-slate-400" /></button>
+          {showBattleArena && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[250] flex flex-col overflow-hidden"
+              style={{ background: 'linear-gradient(160deg, #0a0010 0%, #1a0a2e 40%, #0d1b0d 100%)' }}
+            >
+              {/* Stars background */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {Array.from({ length: 40 }).map((_, i) => (
+                  <div key={i} className="absolute rounded-full bg-white"
+                    style={{ width: Math.random() * 2 + 1, height: Math.random() * 2 + 1, top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, opacity: Math.random() * 0.5 + 0.1 }} />
+                ))}
+              </div>
+
+              {/* Header */}
+              <div className="relative z-10 flex items-center justify-between px-5 py-4 border-b border-white/10 bg-black/30 backdrop-blur-sm shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#dc2626,#7c3aed)' }}>
+                    <Swords size={18} className="text-white" />
                   </div>
-                  <div className="space-y-3">
-                    <button onClick={() => { setHomePageIndex(1); setShowPageSelector(false); }}
-                      className={cn("w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                        homePageIndex === 1 ? 'border-brand-600 bg-brand-50' : 'border-slate-100 hover:border-slate-200 bg-slate-50')}>
-                      <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center shrink-0">
-                        <span className="text-white font-black text-sm">Г.Ж</span>
+                  <div>
+                    <h2 className="font-black text-white text-lg leading-tight">Ялагч Тодруулах</h2>
+                    <p className="text-white/40 text-[11px]">{isBattleRunning ? `Раунд ${arenaRoundNum}` : battleWinner ? '🏆 Тулаан дууслаа' : 'Бэлэн'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isBattleRunning && (
+                    <>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-red-500/20 border border-red-500/30">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-red-400 text-xs font-bold">LIVE</span>
                       </div>
-                      <div>
-                        <p className="font-black text-slate-900">Г. Жавхлан</p>
-                        <p className="text-xs text-slate-400 font-bold">@javkhlan</p>
-                      </div>
-                      {homePageIndex === 1 && <div className="ml-auto w-2.5 h-2.5 rounded-full bg-brand-600" />}
+                      <button onClick={toggleBattleSpeed}
+                        className="px-3 py-1.5 rounded-full text-xs font-black border transition-all"
+                        style={battleSpeedLabel === 'turbo'
+                          ? { background: 'rgba(251,191,36,0.2)', borderColor: 'rgba(251,191,36,0.4)', color: '#fbbf24' }
+                          : battleSpeedLabel === 'fast'
+                          ? { background: 'rgba(34,197,94,0.15)', borderColor: 'rgba(34,197,94,0.3)', color: '#4ade80' }
+                          : { background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)' }}>
+                        {battleSpeedLabel === 'normal' ? '1×' : battleSpeedLabel === 'fast' ? '2.5×' : '⚡ MAX'}
+                      </button>
+                      <button onClick={skipBattleToEnd}
+                        className="px-3 py-1.5 rounded-full text-xs font-black border border-white/15 bg-white/8 text-white/60 hover:bg-white/15 transition-all">
+                        ⏩ Алгасах
+                      </button>
+                    </>
+                  )}
+                  {!isBattleRunning && (
+                    <button onClick={() => setShowBattleArena(false)} className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition-all">
+                      <X size={18} />
                     </button>
-                    <button onClick={() => { setHomePageIndex(2); setShowPageSelector(false); }}
-                      className={cn("w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                        homePageIndex === 2 ? 'border-purple-600 bg-purple-50' : 'border-slate-100 hover:border-slate-200 bg-slate-50')}>
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
-                        <span className="text-white font-black text-sm">iK</span>
-                      </div>
-                      <div>
-                        <p className="font-black text-slate-900">i K A J A K i</p>
-                        <p className="text-xs text-slate-400 font-bold">@ikajaki</p>
-                      </div>
-                      {homePageIndex === 2 && <div className="ml-auto w-2.5 h-2.5 rounded-full bg-purple-600" />}
+                  )}
+                </div>
+              </div>
+
+              {/* Round log bar */}
+              <div className="relative z-10 px-5 py-2.5 bg-black/40 border-b border-white/5 shrink-0 flex items-center gap-3">
+                <p className="text-sm font-medium text-white/70 flex-1 truncate">{arenaLog}</p>
+                {arenaFighters.length > 0 && (
+                  <span className="shrink-0 text-xs font-black text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-full">
+                    ❤️ {arenaFighters.filter(f => f.isAlive).length} амьд
+                  </span>
+                )}
+              </div>
+
+              {/* Fighters Grid — takes all remaining space */}
+              <div className="relative z-10 flex-1 overflow-y-auto p-4">
+                <div className="grid gap-3 max-w-2xl mx-auto"
+                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))' }}>
+                  {arenaFighters.map(fighter => {
+                    const hpPct = Math.max(0, Math.min(100, (fighter.currentHp / fighter.hp) * 100));
+                    const isBot = fighter.uid.startsWith('bot');
+                    const dead = !fighter.isAlive;
+                    const ringColor = fighter.isAttacking
+                      ? 'ring-4 ring-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.6)]'
+                      : fighter.isHit
+                      ? 'ring-4 ring-red-500 shadow-[0_0_16px_rgba(239,68,68,0.5)]'
+                      : 'ring-1 ring-white/10';
+                    const bgColor = dead ? 'bg-slate-700' : isBot ? 'bg-slate-600' : fighter.heroType === 'ranged' ? 'bg-sky-600' : 'bg-rose-600';
+                    const hpColor = hpPct > 60 ? '#22c55e' : hpPct > 30 ? '#eab308' : '#ef4444';
+                    return (
+                      <motion.div key={fighter.uid}
+                        animate={{ scale: fighter.isAttacking ? 1.12 : fighter.isHit ? 0.92 : 1, opacity: dead ? 0.25 : 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                        className="flex flex-col items-center gap-1.5"
+                      >
+                        {/* Circle */}
+                        <div className={`relative w-16 h-16 rounded-full ${bgColor} ${ringColor} flex items-center justify-center transition-all duration-150`}>
+                          {/* Emoji / initial */}
+                          <span className="text-white font-black text-xl select-none">
+                            {isBot ? '🤖' : fighter.heroType === 'ranged' ? '🏹' : '⚔️'}
+                          </span>
+                          {/* Damage number float */}
+                          <AnimatePresence>
+                            {fighter.isHit && fighter.dmgTaken !== null && (
+                              <motion.span key={`${fighter.uid}-dmg-${arenaRoundNum}`}
+                                initial={{ opacity: 1, y: 0, scale: 1 }}
+                                animate={{ opacity: 0, y: -30, scale: 1.3 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.7 }}
+                                className="absolute -top-5 left-1/2 -translate-x-1/2 text-red-300 font-black text-sm pointer-events-none">
+                                -{fighter.dmgTaken}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                          {/* Attack flash */}
+                          {fighter.isAttacking && (
+                            <motion.div initial={{ opacity: 0.8, scale: 0.8 }} animate={{ opacity: 0, scale: 1.8 }} transition={{ duration: 0.4 }}
+                              className="absolute inset-0 rounded-full bg-yellow-400 pointer-events-none" />
+                          )}
+                          {/* Dead overlay */}
+                          {dead && (
+                            <div className="absolute inset-0 rounded-full bg-black/70 flex items-center justify-center">
+                              <span className="text-white/60 text-2xl font-black">✕</span>
+                            </div>
+                          )}
+                        </div>
+                        {/* Name */}
+                        <p className={`text-[10px] font-bold text-center leading-tight max-w-[80px] truncate ${dead ? 'text-white/20' : 'text-white/80'}`}>
+                          {fighter.name}
+                        </p>
+                        {/* HP bar */}
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <motion.div animate={{ width: `${hpPct}%` }} transition={{ type: 'spring', stiffness: 180 }}
+                            className="h-full rounded-full" style={{ background: hpColor }} />
+                        </div>
+                        <p className={`text-[9px] font-mono ${dead ? 'text-white/20' : 'text-white/40'}`}>
+                          {Math.max(0, fighter.currentHp)}/{fighter.hp}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Winner Banner */}
+              <AnimatePresence>
+                {battleWinner && !isBattleRunning && (
+                  <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                    className="relative z-10 shrink-0 p-6 text-center border-t border-white/10"
+                    style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(251,191,36,0.15) 100%)' }}
+                  >
+                    <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}
+                      className="text-5xl mb-3">🏆</motion.div>
+                    <p className="text-amber-300 text-xs font-black uppercase tracking-widest mb-1">Ялагч</p>
+                    <p className="text-white font-black text-3xl mb-1">{battleWinner.name}</p>
+                    <p className="text-white/40 text-sm mb-5">@{battleWinner.username}</p>
+                    <button onClick={() => setShowBattleArena(false)}
+                      className="px-10 py-3 rounded-2xl font-black text-slate-900 text-sm"
+                      style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}>
+                      Хаах
                     </button>
-                    <button onClick={() => { setHomePageIndex(3); setShowPageSelector(false); }}
-                      className={cn("w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left",
-                        homePageIndex === 3 ? 'border-amber-500 bg-amber-50' : 'border-slate-100 hover:border-slate-200 bg-slate-50')}>
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #d97706, #b45309)' }}>
-                        <span className="text-white font-black text-xs">PRO</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== CYBER CITY — FULL SCREEN ===== */}
+        <AnimatePresence>
+          {showCyberCity && (() => {
+            const SUBS = [
+              { id: 'classic', label: 'Classic Citizen', price: 1000, color: '#94a3b8', glow: 'rgba(148,163,184,0.3)', desc: 'Үндсэн иргэн' },
+              { id: 'cool',    label: 'Cool Citizen',    price: 5000, color: '#22d3ee', glow: 'rgba(34,211,238,0.3)',  desc: 'Гоё иргэн' },
+              { id: 'cyber',   label: 'Cyber Citizen',   price: 10000, color: '#a855f7', glow: 'rgba(168,85,247,0.3)', desc: 'Кибер иргэн' },
+            ];
+            const BADGES = [
+              { id: 'diamond', label: 'Diamond', price: 1000000, color: '#67e8f9', glow: 'rgba(103,232,249,0.4)', emoji: '💎' },
+              { id: 'gold',    label: 'Gold',    price: 100000,  color: '#fbbf24', glow: 'rgba(251,191,36,0.4)',  emoji: '🥇' },
+              { id: 'silver',  label: 'Silver',  price: 20000,   color: '#cbd5e1', glow: 'rgba(203,213,225,0.4)', emoji: '🥈' },
+              { id: 'bronze',  label: 'Bronze',  price: 10000,   color: '#f97316', glow: 'rgba(249,115,22,0.4)',  emoji: '🥉' },
+              { id: 'basic',   label: 'Basic',   price: 5000,    color: '#6366f1', glow: 'rgba(99,102,241,0.4)',  emoji: '🏷️' },
+            ];
+            const nextNumber = cyberRegistrations.length + 1;
+            const selectedBadgeData = BADGES.find(b => b.id === cyberSelectedBadge);
+            const selectedSubData = SUBS.find(s => s.id === cyberSelectedSub);
+            const payAmount = cyberSection === 'badge' ? (selectedBadgeData?.price || 0) : (selectedSubData?.price || 0);
+
+            return (
+              <motion.div key="cybercity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[200] flex flex-col overflow-hidden"
+                style={{ background: '#00000f' }}
+              >
+                {/* Grid bg */}
+                <div className="absolute inset-0 pointer-events-none" style={{
+                  backgroundImage: 'linear-gradient(rgba(0,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,255,0.03) 1px,transparent 1px)',
+                  backgroundSize: '60px 60px',
+                }} />
+                {/* Glow orbs */}
+                <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(0,200,255,0.07) 0%,transparent 70%)' }} />
+                <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle,rgba(120,0,255,0.09) 0%,transparent 70%)' }} />
+                {/* Scan lines */}
+                <div className="absolute inset-0 pointer-events-none opacity-[0.025]" style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,1) 2px,rgba(255,255,255,1) 4px)' }} />
+
+                {/* Top bar */}
+                <div className="relative z-10 flex items-center justify-between px-5 py-3 border-b border-white/5 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <motion.div animate={{ opacity: [1,0.3,1] }} transition={{ repeat: Infinity, duration: 2 }}
+                      className="w-2 h-2 rounded-full bg-cyan-400" style={{ boxShadow: '0 0 8px #00ffff' }} />
+                    <span className="text-cyan-400/50 text-[10px] font-mono tracking-widest">CYBER CITY // EARLY ACCESS</span>
+                  </div>
+                  <button onClick={() => setShowCyberCity(false)}
+                    className="p-2 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="relative z-10 flex-1 overflow-y-auto">
+                  <div className="max-w-lg mx-auto px-5 py-6 space-y-8 pb-20">
+
+                    {/* Hero title */}
+                    <div className="text-center pt-2">
+                      <motion.div animate={{ textShadow: ['0 0 20px rgba(0,255,255,0.6),0 0 40px rgba(0,255,255,0.3)','0 0 30px rgba(0,255,255,0.9),0 0 60px rgba(0,200,255,0.4)','0 0 20px rgba(0,255,255,0.6),0 0 40px rgba(0,255,255,0.3)'] }}
+                        transition={{ repeat: Infinity, duration: 3 }}
+                        className="text-5xl font-black tracking-tight" style={{ color: '#00ffff', fontFamily: 'monospace' }}>
+                        CYBER
+                      </motion.div>
+                      <motion.div animate={{ textShadow: ['0 0 20px rgba(168,85,247,0.6)','0 0 30px rgba(168,85,247,0.9)','0 0 20px rgba(168,85,247,0.6)'] }}
+                        transition={{ repeat: Infinity, duration: 3, delay: 0.5 }}
+                        className="text-5xl font-black tracking-tight -mt-2" style={{ color: '#a855f7', fontFamily: 'monospace' }}>
+                        CITY
+                      </motion.div>
+                      <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10">
+                        <motion.span animate={{ opacity: [1,0.3,1] }} transition={{ repeat: Infinity, duration: 1.5 }}
+                          className="text-cyan-400 text-xs">▶</motion.span>
+                        <span className="text-cyan-300 font-mono text-xs font-bold tracking-widest">2026.09.01 — ЭХЛЭНЭ</span>
                       </div>
-                      <div>
-                        <p className="font-black text-slate-900">Г. Жавхлан <span className="text-amber-500">(Pro)</span></p>
-                        <p className="text-xs text-slate-400 font-bold">@javkhlan.pro</p>
+                      <p className="mt-3 text-white/50 text-sm leading-relaxed">
+                        Бодит ертөнцийн хамгийн гоё, шилдэг зүйлүүдийг нэг хотод босгоно
+                      </p>
+                      <p className="mt-2 text-white/30 text-xs font-mono">{cyberRegistrations.length} иргэн бүртгүүлсэн</p>
+                    </div>
+
+                    {/* Section toggle */}
+                    <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                      {[{ id: 'sub', label: 'Early Subscription' }, { id: 'badge', label: 'Badge ID' }].map(s => (
+                        <button key={s.id} onClick={() => setCyberSection(s.id as any)}
+                          className={cn('flex-1 py-2.5 rounded-xl text-xs font-black transition-all',
+                            cyberSection === s.id ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'text-white/40 hover:text-white/60')}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* ── SUBSCRIPTION SECTION ── */}
+                    {cyberSection === 'sub' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,rgba(0,255,255,0.3))' }} />
+                          <span className="text-cyan-400/60 text-[10px] font-mono tracking-widest uppercase">Early Subscription Sale</span>
+                          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,rgba(0,255,255,0.3),transparent)' }} />
+                        </div>
+                        {SUBS.map(s => (
+                          <motion.button key={s.id} whileTap={{ scale: 0.97 }}
+                            onClick={() => setCyberSelectedSub(cyberSelectedSub === s.id ? null : s.id)}
+                            className="w-full p-4 rounded-2xl border-2 text-left transition-all"
+                            style={{
+                              borderColor: cyberSelectedSub === s.id ? s.color : 'rgba(255,255,255,0.08)',
+                              background: cyberSelectedSub === s.id ? `${s.glow}` : 'rgba(255,255,255,0.03)',
+                              boxShadow: cyberSelectedSub === s.id ? `0 0 20px ${s.glow}` : 'none',
+                            }}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-black text-base" style={{ color: s.color }}>{s.label}</p>
+                                <p className="text-white/40 text-xs mt-0.5">{s.desc}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-black text-lg" style={{ color: s.color }}>{s.price.toLocaleString()}₮</p>
+                                <p className="text-white/30 text-[10px]">/сар</p>
+                              </div>
+                            </div>
+                          </motion.button>
+                        ))}
+
+                        {/* Form for sub */}
+                        {cyberSelectedSub && (
+                          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 pt-2">
+                            <input type="text" value={cyberForm.name} onChange={e => setCyberForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="Нэр" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-cyan-500/50 text-sm" />
+                            <input type="tel" value={cyberForm.phone} onChange={e => setCyberForm(f => ({ ...f, phone: e.target.value }))}
+                              placeholder="Утасны дугаар" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-cyan-500/50 text-sm" />
+                            <motion.button whileTap={{ scale: 0.97 }}
+                              disabled={isSubmittingCyber || !cyberForm.name.trim() || !cyberForm.phone.trim()}
+                              onClick={async () => {
+                                if (!cyberForm.name.trim() || !cyberForm.phone.trim() || !cyberSelectedSub) return;
+                                setIsSubmittingCyber(true);
+                                try {
+                                  const citizenNumber = cyberRegistrations.length + 1;
+                                  const processSub = async () => {
+                                    await addDoc(collection(db, 'cyber_city'), {
+                                      name: cyberForm.name.trim(), phone: cyberForm.phone.trim(),
+                                      type: 'subscription', tier: cyberSelectedSub,
+                                      amount: selectedSubData?.price || 0, citizenNumber,
+                                      timestamp: serverTimestamp(),
+                                    });
+                                    setCyberForm({ name: '', phone: '' }); setCyberSelectedSub(null);
+                                    alert(`✅ Бүртгэл амжилттай! Та #${citizenNumber} дугаартай иргэн боллоо.`);
+                                  };
+                                  const res = await axios.post('/api/qpay/invoice', { amount: selectedSubData?.price, description: `Cyber City — ${selectedSubData?.label}` });
+                                  setQpayInvoice({ ...res.data, amount: selectedSubData?.price });
+                                  setOnPaymentSuccess(() => processSub);
+                                } catch { alert('Алдаа гарлаа.'); } finally { setIsSubmittingCyber(false); }
+                              }}
+                              className="w-full py-4 rounded-2xl font-black text-sm disabled:opacity-40 transition-all"
+                              style={{ background: 'linear-gradient(135deg,#0e7490,#7c3aed)', boxShadow: '0 0 20px rgba(0,200,255,0.2)' }}>
+                              <span className="text-white flex items-center justify-center gap-2">
+                                {isSubmittingCyber ? <><Loader2 size={16} className="animate-spin" />Уншиж байна...</> : <><CreditCard size={16} />Төлбөр Төлөх — {(selectedSubData?.price || 0).toLocaleString()}₮/сар</>}
+                              </span>
+                            </motion.button>
+                          </motion.div>
+                        )}
                       </div>
-                      {homePageIndex === 3 && <div className="ml-auto w-2.5 h-2.5 rounded-full bg-amber-500" />}
-                    </button>
+                    )}
+
+                    {/* ── BADGE ID SECTION ── */}
+                    {cyberSection === 'badge' && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,transparent,rgba(168,85,247,0.3))' }} />
+                          <span className="text-purple-400/60 text-[10px] font-mono tracking-widest uppercase">Хэрэглэгч Бүртгүүлэх</span>
+                          <div className="h-px flex-1" style={{ background: 'linear-gradient(90deg,rgba(168,85,247,0.3),transparent)' }} />
+                        </div>
+                        {/* Next number preview */}
+                        <div className="text-center py-3 px-4 rounded-2xl border border-white/10 bg-white/3">
+                          <p className="text-white/30 text-[10px] font-mono">ДАРААГИЙН ИРГЭНИЙ ДУГААР</p>
+                          <p className="text-4xl font-black mt-1" style={{ color: '#00ffff', textShadow: '0 0 20px rgba(0,255,255,0.5)' }}>#{nextNumber}</p>
+                        </div>
+                        {BADGES.map(b => (
+                          <motion.button key={b.id} whileTap={{ scale: 0.97 }}
+                            onClick={() => setCyberSelectedBadge(cyberSelectedBadge === b.id ? null : b.id)}
+                            className="w-full p-4 rounded-2xl border-2 text-left transition-all"
+                            style={{
+                              borderColor: cyberSelectedBadge === b.id ? b.color : 'rgba(255,255,255,0.08)',
+                              background: cyberSelectedBadge === b.id ? `${b.glow}` : 'rgba(255,255,255,0.03)',
+                              boxShadow: cyberSelectedBadge === b.id ? `0 0 24px ${b.glow}` : 'none',
+                            }}>
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{b.emoji}</span>
+                              <div className="flex-1">
+                                <p className="font-black" style={{ color: b.color }}>{b.label} Badge ID</p>
+                                <p className="text-white/40 text-xs">Иргэний дугаар + {b.label} Badge</p>
+                              </div>
+                              <p className="font-black text-base" style={{ color: b.color }}>{b.price.toLocaleString()}₮</p>
+                            </div>
+                          </motion.button>
+                        ))}
+
+                        {/* Form for badge */}
+                        {cyberSelectedBadge && (
+                          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3 pt-2">
+                            <input type="text" value={cyberForm.name} onChange={e => setCyberForm(f => ({ ...f, name: e.target.value }))}
+                              placeholder="Нэр" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-purple-500/50 text-sm" />
+                            <input type="tel" value={cyberForm.phone} onChange={e => setCyberForm(f => ({ ...f, phone: e.target.value }))}
+                              placeholder="Утасны дугаар" className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/20 outline-none focus:border-purple-500/50 text-sm" />
+                            <motion.button whileTap={{ scale: 0.97 }}
+                              disabled={isSubmittingCyber || !cyberForm.name.trim() || !cyberForm.phone.trim()}
+                              onClick={async () => {
+                                if (!cyberForm.name.trim() || !cyberForm.phone.trim() || !cyberSelectedBadge) return;
+                                setIsSubmittingCyber(true);
+                                try {
+                                  const citizenNumber = cyberRegistrations.length + 1;
+                                  const processBadge = async () => {
+                                    await addDoc(collection(db, 'cyber_city'), {
+                                      name: cyberForm.name.trim(), phone: cyberForm.phone.trim(),
+                                      type: 'badge', badge: cyberSelectedBadge,
+                                      amount: selectedBadgeData?.price || 0, citizenNumber,
+                                      timestamp: serverTimestamp(),
+                                    });
+                                    setCyberForm({ name: '', phone: '' }); setCyberSelectedBadge(null);
+                                    alert(`✅ Бүртгэл амжилттай!\nТа Cyber City-н #${citizenNumber} иргэн боллоо.\n${selectedBadgeData?.emoji} ${selectedBadgeData?.label} Badge олгогдлоо!`);
+                                  };
+                                  const res = await axios.post('/api/qpay/invoice', { amount: selectedBadgeData?.price, description: `Cyber City — ${selectedBadgeData?.label} Badge ID` });
+                                  setQpayInvoice({ ...res.data, amount: selectedBadgeData?.price });
+                                  setOnPaymentSuccess(() => processBadge);
+                                } catch { alert('Алдаа гарлаа.'); } finally { setIsSubmittingCyber(false); }
+                              }}
+                              className="w-full py-4 rounded-2xl font-black text-sm disabled:opacity-40 transition-all"
+                              style={{ background: `linear-gradient(135deg,${selectedBadgeData?.color || '#6366f1'}80,#7c3aed)`, boxShadow: `0 0 20px ${selectedBadgeData?.glow || 'rgba(99,102,241,0.3)'}` }}>
+                              <span className="text-white flex items-center justify-center gap-2">
+                                {isSubmittingCyber ? <><Loader2 size={16} className="animate-spin" />Уншиж байна...</> : <><CreditCard size={16} />Бүртгүүлэх — {(selectedBadgeData?.price || 0).toLocaleString()}₮</>}
+                              </span>
+                            </motion.button>
+                          </motion.div>
+                        )}
+
+                        {/* Citizens list */}
+                        {cyberRegistrations.filter(r => r.type === 'badge').length > 0 && (
+                          <div className="space-y-2 pt-2">
+                            <p className="text-white/30 text-[10px] font-mono uppercase tracking-widest text-center">Бүртгэлтэй иргэд</p>
+                            {cyberRegistrations.filter(r => r.type === 'badge').slice(0, 10).map((r: any) => {
+                              const badge = BADGES.find(b => b.id === r.badge);
+                              return (
+                                <div key={r.id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/5 bg-white/3">
+                                  <span className="text-lg">{badge?.emoji || '🏷️'}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-white/80 font-bold text-sm truncate">{r.name}</p>
+                                    <p className="text-white/30 text-[10px]" style={{ color: badge?.color }}>{badge?.label} Badge</p>
+                                  </div>
+                                  <span className="font-black text-sm shrink-0" style={{ color: '#00ffff', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>#{r.citizenNumber}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-center text-white/15 font-mono text-[10px] tracking-widest">// THE FUTURE IS BEING BUILT</p>
                   </div>
                 </div>
               </motion.div>
-            </>
+            );
+          })()}
+        </AnimatePresence>
+
+        {/* ===== SERVICE CENTER — FULL SCREEN ===== */}
+        <AnimatePresence>
+          {showServiceCenter && (() => {
+            const scMaxFloors = selectedServiceCenter?.floors ?? 1;
+            const scRoomNumber = `${scFloor}${String(scRoomIndex + 1).padStart(4, '0')}`;
+            const handleScTouchStart = (e: React.TouchEvent) => { scSwipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
+            const handleScTouchMove = (e: React.TouchEvent) => { if (serviceCenterView === 'navigate') { e.preventDefault(); e.stopPropagation(); } };
+            const handleScTouchEnd = (e: React.TouchEvent) => {
+              if (!scSwipeStartRef.current) return;
+              const dx = e.changedTouches[0].clientX - scSwipeStartRef.current.x;
+              const dy = e.changedTouches[0].clientY - scSwipeStartRef.current.y;
+              scSwipeStartRef.current = null;
+              if (serviceCenterView !== 'navigate') return;
+              // store mode дотор — Framer Motion drag-аар зохицуулна
+              if (scMode === 'store') return;
+              if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+                if (dy < -40) setScFloor(f => Math.max(1, f - 1));
+                else setScFloor(f => Math.min(scMaxFloors, f + 1));
+                setScRoomIndex(0); setScInStorePage(0); setScMode('floor');
+              } else if (Math.abs(dx) > 40) {
+                if (dx < -40) setScRoomIndex(i => i + 1);
+                else setScRoomIndex(i => Math.max(0, i - 1));
+              }
+            };
+            const handleScTap = (e: React.MouseEvent) => {
+              const now = Date.now();
+              if (now - scDoubleTapRef.current < 300) {
+                scDoubleTapRef.current = 0;
+                if (serviceCenterView === 'navigate') { setScTapPos({ x: e.clientX, y: e.clientY }); setShowScEnterExit(true); }
+              } else { scDoubleTapRef.current = now; }
+            };
+            return (
+              <motion.div key="servicecenter" initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+                transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+                className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-slate-50 select-none"
+                style={{ touchAction: serviceCenterView === 'navigate' ? 'none' : 'auto', overscrollBehavior: 'none' }}
+                onTouchStart={handleScTouchStart} onTouchMove={handleScTouchMove} onTouchEnd={handleScTouchEnd} onClick={handleScTap}>
+
+                {/* Header */}
+                <div className="shrink-0 bg-white border-b border-slate-100 shadow-sm">
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                        <span className="text-white text-base">🛎️</span>
+                      </div>
+                      <div>
+                        <p className="text-slate-900 font-black text-base leading-tight">
+                          {serviceCenterView === 'navigate' && selectedServiceCenter ? selectedServiceCenter.name : 'Үйлчилгээний Төв'}
+                        </p>
+                        <p className="text-purple-500 text-[10px] font-bold tracking-wider">
+                          {serviceCenterView === 'navigate' ? `${scFloor}F · Өрөө ${scRoomNumber}` : 'Service Center'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {serviceCenterView !== 'home' && (
+                        <button onClick={e => { e.stopPropagation(); setServiceCenterView('home'); setSelectedServiceCenter(null); setScFloor(1); setScRoomIndex(0); setScMode('floor'); }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">← Буцах</button>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); setShowServiceCenter(false); setServiceCenterView('home'); setSelectedServiceCenter(null); }}
+                        className="p-2 rounded-xl border border-slate-200 text-slate-400">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  {serviceCenterView === 'navigate' && selectedServiceCenter && (
+                    <div className="flex items-center justify-center gap-1.5 pb-3">
+                      {Array.from({ length: Math.min(scMaxFloors, 10) }, (_, i) => i + 1).map(f => (
+                        <button key={f} onClick={e => { e.stopPropagation(); setScFloor(f); setScRoomIndex(0); setScInStorePage(0); setScMode('floor'); }}
+                          className={cn('rounded-full transition-all', scFloor === f ? 'w-6 h-2 bg-purple-500' : 'w-2 h-2 bg-slate-200')} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── HOME ── */}
+                {serviceCenterView === 'home' && (
+                  <div className="flex-1 flex flex-col p-4 justify-center">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { delay: 0.05, icon: '🏗️', label: 'Үйлчилгээний Төв Үүсгэх', sub: 'Шинэ нэмэх', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', textColor: 'text-white', subColor: 'text-white/70', onClick: (e: React.MouseEvent) => { e.stopPropagation(); setServiceCenterView('create'); setServiceCenterDone(false); setServiceCenterError(''); setServiceCenterForm({ name: '', floors: '', imageUrl: '' }); } },
+                        { delay: 0.08, icon: '🏢', label: 'Үйлчилгээний Төв Жагсаалт', sub: `${serviceCenters.length} бүртгэлтэй`, bg: 'white', textColor: 'text-slate-900', subColor: 'text-slate-400', border: true, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setServiceCenterView('list'); } },
+                        { delay: 0.11, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.14, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.17, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.20, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                      ].map((item, i) => (
+                        <motion.button key={i} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: item.delay }}
+                          onClick={item.onClick} disabled={(item as any).disabled}
+                          className={`relative overflow-hidden rounded-3xl p-5 text-left shadow-sm aspect-square flex flex-col justify-between ${(item as any).border ? 'border border-slate-100' : ''}`}
+                          style={{ background: item.bg }}>
+                          <div className="text-3xl">{item.icon}</div>
+                          <div>
+                            <p className={`font-black text-sm leading-tight ${item.textColor}`}>{item.label}</p>
+                            {item.sub ? <p className={`text-xs mt-0.5 ${item.subColor}`}>{item.sub}</p> : null}
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── CREATE ── */}
+                {serviceCenterView === 'create' && (
+                  <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4" onClick={e => e.stopPropagation()}>
+                    {serviceCenterDone ? (
+                      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+                        <div className="text-6xl">✅</div>
+                        <p className="text-slate-900 font-black text-xl">Амжилттай үүслээ!</p>
+                        <button onClick={() => { setServiceCenterDone(false); setServiceCenterView('list'); }}
+                          className="px-6 py-3 rounded-2xl font-black text-white text-sm mt-2"
+                          style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                          Жагсаалт харах →
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                          <p className="font-black text-base">Шинэ Үйлчилгээний Төв</p>
+                          <p className="text-white/70 text-xs mt-0.5">Мэдээллээ бөглөөд нэмнэ үү</p>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 space-y-3">
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">НЭР</label>
+                            <input type="text" value={serviceCenterForm.name}
+                              onChange={e => { e.stopPropagation(); setServiceCenterForm(p => ({ ...p, name: e.target.value })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='Жишээ: "Гоо Сайхны Төв"'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                          </div>
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">ХЭДЭН ДАВХАР</label>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" value={serviceCenterForm.floors}
+                              onChange={e => { e.stopPropagation(); setServiceCenterForm(p => ({ ...p, floors: e.target.value.replace(/[^0-9]/g, '') })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='Жишээ: 5'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                          </div>
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">ЗУРГИЙН ХОЛБООС (заавал биш)</label>
+                            <input type="text" value={serviceCenterForm.imageUrl}
+                              onChange={e => { e.stopPropagation(); setServiceCenterForm(p => ({ ...p, imageUrl: e.target.value })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='https://...'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                          </div>
+                        </div>
+                        {serviceCenterError ? <p className="text-red-500 text-xs font-bold px-1">{serviceCenterError}</p> : null}
+                        <button
+                          disabled={serviceCenterSubmitting || !serviceCenterForm.name.trim() || !serviceCenterForm.floors.trim()}
+                          onTouchStart={e => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.stopPropagation(); e.preventDefault();
+                            const name = serviceCenterForm.name.trim();
+                            const floors = parseInt(serviceCenterForm.floors) || 0;
+                            if (!name || !floors) return;
+                            setServiceCenterSubmitting(true); setServiceCenterError('');
+                            try {
+                              await addDoc(collection(db, 'service_centers'), {
+                                name, floors,
+                                ...(serviceCenterForm.imageUrl.trim() ? { imageUrl: serviceCenterForm.imageUrl.trim() } : {}),
+                                timestamp: serverTimestamp(),
+                              });
+                              setServiceCenterDone(true);
+                            } catch (err: any) {
+                              setServiceCenterError(err?.message || 'Алдаа гарлаа.');
+                            }
+                            setServiceCenterSubmitting(false);
+                          }}
+                          className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40"
+                          style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                          {serviceCenterSubmitting ? 'Үүсгэж байна...' : 'Үүсгэх'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* ── LIST ── */}
+                {serviceCenterView === 'list' && (
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3" style={{ touchAction: 'pan-y' }}>
+                    {serviceCenters.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div className="text-5xl">🏗️</div>
+                        <p className="text-slate-400 font-bold text-sm">Үйлчилгээний төв байхгүй байна</p>
+                        <button onClick={() => setServiceCenterView('create')}
+                          className="px-5 py-2.5 rounded-xl font-black text-white text-sm"
+                          style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                          Нэмэх +
+                        </button>
+                      </div>
+                    ) : serviceCenters.map((center, idx) => (
+                      <motion.button key={center.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
+                        onClick={e => { e.stopPropagation(); setSelectedServiceCenter({ id: center.id, name: center.name, floors: center.floors }); setScFloor(1); setScRoomIndex(0); setScMode('floor'); setScInStorePage(0); setServiceCenterView('navigate'); }}
+                        className="w-full rounded-3xl overflow-hidden shadow-sm border border-slate-100 text-left relative"
+                        style={{ height: '30vh' }}>
+                        <div className="absolute inset-0"
+                          style={center.imageUrl
+                            ? { backgroundImage: `url(${center.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : { background: `linear-gradient(135deg, hsl(${(idx * 67 + 270) % 360},55%,28%), hsl(${(idx * 67 + 300) % 360},60%,38%))` }
+                          }
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                        <div className="absolute top-3 left-3 bg-black/30 backdrop-blur-sm rounded-xl px-2.5 py-1">
+                          <span className="text-white text-[10px] font-black tracking-wider">{center.floors}F</span>
+                        </div>
+                        {!center.imageUrl && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-6xl opacity-40">🏢</span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 inset-x-0 px-4 py-4">
+                          <p className="text-white font-black text-lg leading-tight">{center.name}</p>
+                          <p className="text-white/60 text-xs mt-0.5">{center.floors} давхар · Дотогш орох →</p>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+
+                {/* ── NAVIGATE: floor ── */}
+                {serviceCenterView === 'navigate' && selectedServiceCenter && scMode === 'floor' && (() => {
+                  const floorKey = `${selectedServiceCenter.id}_${scFloor}`;
+                  const floorDirection = scFloorInfo[floorKey] || '';
+                  return (
+                    <motion.div key={`sc-floor-${scFloor}-${scRoomIndex}`}
+                      initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }}
+                      className="flex-1 flex flex-col overflow-hidden">
+                      {(() => {
+                        const scFloorProf = storeProfiles[`service_center__${scRoomNumber}`];
+                        return (
+                          <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden"
+                            style={{ background: scFloorProf?.imageUrl ? 'none' : `linear-gradient(135deg, hsl(${(scFloor * 47 + scRoomIndex * 31 + 270) % 360},55%,28%), hsl(${(scFloor * 47 + scRoomIndex * 31 + 300) % 360},60%,35%))` }}>
+                            {scFloorProf?.imageUrl && <img src={scFloorProf.imageUrl} alt="storefront" className="absolute inset-0 w-full h-full object-cover" />}
+                            {scFloorProf?.imageUrl && <div className="absolute inset-0 bg-black/40" />}
+                            {!scFloorProf?.imageUrl && <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at 50% 40%, white 0%, transparent 65%)' }} />}
+                            {scFloor > 1 && <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/40 text-xs font-bold">{scFloor - 1}F доод давхар ↑</div>}
+                            {scFloor < scMaxFloors && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 text-xs font-bold">{scFloor + 1}F дээд давхар ↓</div>}
+                            <div className="relative z-10 flex flex-col items-center gap-3">
+                              <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-6 py-3 text-center">
+                                <p className="text-white/60 text-[10px] font-black tracking-widest uppercase mb-0.5">Өрөө · Room</p>
+                                <p className="text-white font-black text-4xl tracking-wider">{scRoomNumber}</p>
+                                {scFloorProf?.storeName && <p className="text-white font-black text-sm mt-1">{scFloorProf.storeName}</p>}
+                                {(() => { const r = storeRatings[`service_center__${scRoomNumber}`]; return r ? <div className="mt-1 flex justify-center"><StoreRatingBadge avg={r.avg} count={r.count} size="xs" /></div> : null; })()}
+                              </div>
+                          {floorDirection ? (
+                            <div className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-center">
+                              <p className="text-white font-black text-sm">{floorDirection}</p>
+                            </div>
+                          ) : (
+                            <button onClick={e => { e.stopPropagation(); setScEditFloorValue(''); setScEditFloor(true); }}
+                              className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-center">
+                              <p className="text-white/60 text-xs font-bold">+ Чиглэл нэмэх</p>
+                            </button>
+                          )}
+                        </div>
+                        </div>
+                        );
+                      })()}
+                      <div className="shrink-0 bg-white">
+                        <div className="px-6 pt-4 pb-3 border-b border-slate-100">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-slate-400 text-xs font-black tracking-widest uppercase mb-1">{selectedServiceCenter.name} · {scFloor}-р давхар</p>
+                              <p className="text-slate-900 font-black text-xl">{storeProfiles[`service_center__${scRoomNumber}`]?.storeName || `Өрөө ${scRoomNumber}`}</p>
+                              {floorDirection && <p className="text-purple-600 text-sm font-bold mt-0.5">{floorDirection}</p>}
+                            </div>
+                            <button onClick={e => { e.stopPropagation(); setScEditFloorValue(floorDirection); setScEditFloor(true); }}
+                              className="shrink-0 mt-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold">
+                              ✏️ Засах
+                            </button>
+                          </div>
+                        </div>
+                        <div className="px-6 py-4 flex items-center justify-between">
+                          <p className="text-slate-300 text-[10px]">← Swipe → өрөө · ↑↓ давхар</p>
+                          <div className="flex gap-2">
+                            <button onClick={e => { e.stopPropagation(); setScShowSales(true); }}
+                              className="px-4 py-2.5 rounded-xl font-black text-white text-xs"
+                              style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              🛎️ Sales
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); setScMode('store'); setScInStorePage(0); }}
+                              className="px-5 py-2.5 rounded-xl font-black text-white text-sm"
+                              style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                              Орох →
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <AnimatePresence>
+                        {scEditFloor && (
+                          <motion.div key="sc-edit-floor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-20 flex items-end bg-black/40"
+                            onClick={e => { e.stopPropagation(); setScEditFloor(false); }}>
+                            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                              className="w-full bg-white rounded-t-3xl p-6 space-y-4"
+                              onClick={e => e.stopPropagation()}>
+                              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-2" />
+                              <div>
+                                <p className="text-slate-900 font-black text-base">{scFloor}-р давхарын чиглэл</p>
+                                <p className="text-slate-400 text-xs mt-0.5">Жишээ: Үсчин, Гоо сайхан, Массаж, Эмнэлэг...</p>
+                              </div>
+                              <input type="text" value={scEditFloorValue}
+                                onChange={e => setScEditFloorValue(e.target.value)}
+                                onTouchStart={e => e.stopPropagation()}
+                                placeholder={`${scFloor}-р давхарын үйлчилгээний чиглэл`}
+                                autoFocus
+                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-base outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                              />
+                              <div className="flex gap-3">
+                                <button onClick={() => setScEditFloor(false)}
+                                  className="flex-1 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 text-sm">Болих</button>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const val = scEditFloorValue.trim();
+                                    try {
+                                      await setDoc(doc(db, 'service_center_floors', floorKey), { direction: val, centerId: selectedServiceCenter.id, floor: scFloor, timestamp: serverTimestamp() });
+                                    } catch {}
+                                    setScEditFloor(false);
+                                  }}
+                                  className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                                  style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                                  Хадгалах
+                                </button>
+                              </div>
+                            </motion.div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })()}
+
+                {/* ── NAVIGATE: inside room ── */}
+                {serviceCenterView === 'navigate' && selectedServiceCenter && scMode === 'store' && (() => {
+                  const scProf = storeProfiles[`service_center__${scRoomNumber}`];
+                  const scRating = storeRatings[`service_center__${scRoomNumber}`];
+                  return (
+                    <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+                      <div className="absolute inset-0 flex flex-col">
+                        <div className="shrink-0 h-48 relative flex items-center justify-center overflow-hidden"
+                          style={{ background: scProf?.imageUrl ? 'none' : `linear-gradient(135deg, hsl(${(scFloor * 47 + scRoomIndex * 31 + 270) % 360},55%,28%), hsl(${(scFloor * 47 + scRoomIndex * 31 + 300) % 360},60%,35%))` }}>
+                          {scProf?.imageUrl && <img src={scProf.imageUrl} alt="storefront" className="absolute inset-0 w-full h-full object-cover" />}
+                          {scProf?.imageUrl && <div className="absolute inset-0 bg-black/40" />}
+                          {!scProf?.imageUrl && <span className="text-7xl">🛎️</span>}
+                          <div className="absolute top-3 left-3 bg-black/30 rounded-xl px-2 py-1">
+                            <span className="text-white text-xs font-black">#{scRoomNumber}</span>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setScMode('floor'); setScInStorePage(0); }}
+                            className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm rounded-xl p-2 text-white">
+                            <X size={16} />
+                          </button>
+                          {scProf && hasStoreAccess('service_center', scRoomNumber) && <button onClick={e => { e.stopPropagation(); openStoreProfileEditor('service_center', scRoomNumber, selectedServiceCenter.name); }}
+                            className="absolute bottom-3 right-3 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 text-white text-xs font-black">✏️ Засах</button>}
+                        </div>
+                        {scProf ? (() => {
+                          const prods = storeProducts[`service_center__${scRoomNumber}`] || [];
+                          const isOwner = hasStoreAccess('service_center', scRoomNumber) && !!storeAccess[`service_center__${scRoomNumber}`];
+                          const storeKey = `service_center__${scRoomNumber}`;
+                          const idx = Math.min(productCarouselIndex[storeKey] ?? 0, Math.max(0, prods.length - 1));
+                          const prod = prods[idx];
+                          return (
+                            <>
+                              {/* Main store info */}
+                              <div className="flex-1 overflow-y-auto bg-white px-5 py-5 space-y-4">
+                                <div>
+                                  <p className="text-slate-900 font-black text-2xl">{scProf.storeName}</p>
+                                  {scRating && <div className="mt-1"><StoreRatingBadge avg={scRating.avg} count={scRating.count} size="sm" /></div>}
+                                  {scProf.description && <p className="text-slate-500 text-sm mt-2 leading-relaxed">{scProf.description}</p>}
+                                </div>
+                                {(scProf.website || scProf.phone) && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {scProf.website && <a href={scProf.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold">🌐 Website</a>}
+                                    {scProf.phone && <a href={`tel:${scProf.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold">📞 {scProf.phone}</a>}
+                                  </div>
+                                )}
+                                {(scProf.facebook || scProf.youtube || scProf.instagram) && (
+                                  <div className="flex gap-2 flex-wrap">
+                                    {scProf.facebook && <a href={scProf.facebook} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: '#1877f2' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>FB</a>}
+                                    {scProf.youtube && <a href={scProf.youtube} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: '#ff0000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>YT</a>}
+                                    {scProf.instagram && <a href={scProf.instagram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: 'linear-gradient(45deg,#f09433,#dc2743,#bc1888)' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>IG</a>}
+                                  </div>
+                                )}
+                                {hasStoreAccess('service_center', scRoomNumber) && storeAccess[`service_center__${scRoomNumber}`] && (
+                                  <div className="flex gap-3 pt-2 border-t border-slate-100">
+                                    <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); openStoreRenew('service_center', scRoomNumber, selectedServiceCenter.name); }} className="flex-1 py-3 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>🔄 Сунгах</motion.button>
+                                    <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); openStoreSell('service_center', scRoomNumber, selectedServiceCenter.name); }} className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm flex items-center justify-center gap-2 border border-slate-200 bg-slate-50">💰 Зарах</motion.button>
+                                  </div>
+                                )}
+                              </div>
+                              {/* Tap/swipe-left pill → products page */}
+                              <motion.div drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2}
+                                onDragEnd={(_, info) => { if (info.offset.x < -40) setScInStorePage(1); }}
+                                onClick={() => setScInStorePage(1)}
+                                className="shrink-0 flex items-center justify-between px-5 py-3 bg-white border-t border-slate-100 cursor-pointer select-none active:bg-slate-50">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-black text-slate-700">🛒 Бараа{prods.length > 0 ? ` (${prods.length})` : ''}</span>
+                                </div>
+                                <div className="flex items-center gap-1 text-slate-400">
+                                  <span className="text-xs font-bold">Харах</span>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                                </div>
+                              </motion.div>
+                              {/* Products page — slides in from RIGHT */}
+                              <AnimatePresence>
+                                {scInStorePage === 1 && (
+                                  <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                                    transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                                    className="absolute inset-0 z-10 bg-black flex flex-col overflow-hidden">
+                                    {/* Absolute header overlay */}
+                                    <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-3 pb-2">
+                                      <button onClick={() => setScInStorePage(0)} className="p-2 rounded-xl bg-black/40 backdrop-blur-sm">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                                      </button>
+                                      <div className="flex items-center gap-2">
+                                        {isOwner && <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); setAddProductMeta({ mallType: 'service_center', roomNumber: scRoomNumber }); setStoreProductForm({ name: '', description: '', imageUrl: '', price: '', stock: '' }); setShowAddProduct(true); }} className="px-3 py-1.5 rounded-xl font-black text-white text-xs bg-emerald-500/80 backdrop-blur-sm">+ Нэмэх</motion.button>}
+                                        {prods.length > 1 && <span className="text-white text-xs font-black bg-black/40 backdrop-blur-sm rounded-xl px-2.5 py-1">{idx + 1}/{prods.length}</span>}
+                                      </div>
+                                    </div>
+                                    {/* 80% — image + description overlay */}
+                                    <div className="relative" style={{ flex: '0 0 80%' }}>
+                                      <AnimatePresence mode="wait">
+                                        <motion.div key={idx} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.12}
+                                          onDragEnd={(_, info) => {
+                                            if (info.offset.x < -50 && idx < prods.length - 1) setProductCarouselIndex(p => ({ ...p, [storeKey]: idx + 1 }));
+                                            else if (info.offset.x > 50 && idx > 0) setProductCarouselIndex(p => ({ ...p, [storeKey]: idx - 1 }));
+                                          }}
+                                          initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -60, opacity: 0 }}
+                                          transition={{ duration: 0.18 }}
+                                          className="absolute inset-0 select-none cursor-grab active:cursor-grabbing">
+                                          {prod.imageUrl
+                                            ? <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover pointer-events-none" />
+                                            : <div className="w-full h-full bg-slate-800 flex items-center justify-center text-7xl">📦</div>}
+                                          {prod.description && (
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-4 pt-10 pb-4">
+                                              <p className="text-white text-sm leading-relaxed">{prod.description}</p>
+                                            </div>
+                                          )}
+                                        </motion.div>
+                                      </AnimatePresence>
+                                      {prods.length > 1 && (
+                                        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none">
+                                          {prods.map((_, i) => (
+                                            <div key={i} className={`rounded-full transition-all duration-200 ${i === idx ? 'w-5 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/50'}`} />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    {/* 20% — name, price, buttons */}
+                                    <div className="bg-white flex flex-col justify-center gap-2 px-4 py-3" style={{ flex: '0 0 20%' }}>
+                                      <div className="flex items-baseline gap-3">
+                                        <p className="text-slate-900 font-black text-lg leading-tight flex-1">{prod.name}</p>
+                                        <p className="text-emerald-600 font-black text-xl shrink-0">{prod.price.toLocaleString()}₮</p>
+                                      </div>
+                                      {prod.stock > 0 && <p className="text-slate-400 text-[10px] font-bold -mt-1">{prod.stock} ширхэг үлдсэн</p>}
+                                      <div className="flex gap-2">
+                                        <motion.button whileTap={{ scale: 0.97 }} onClick={async e => { e.stopPropagation(); await addDoc(collection(db, 'store_orders'), { mallType: 'service_center', roomNumber: scRoomNumber, productId: prod.id, productName: prod.name, price: prod.price, type: 'buy', buyer: appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon', timestamp: serverTimestamp() }); alert('Захиалга амжилттай!'); }} className="flex-1 py-2.5 rounded-xl font-black text-white text-sm" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>🛒 Худалдаж авах</motion.button>
+                                        <motion.button whileTap={{ scale: 0.97 }} onClick={async e => { e.stopPropagation(); await addDoc(collection(db, 'store_orders'), { mallType: 'service_center', roomNumber: scRoomNumber, productId: prod.id, productName: prod.name, price: prod.price, type: 'order', buyer: appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon', timestamp: serverTimestamp() }); alert('Захиалга амжилттай!'); }} className="flex-1 py-2.5 rounded-xl font-black text-slate-600 text-sm border border-slate-200">📋 Захиалах</motion.button>
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </>
+                          );
+                        })() : (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-white px-6 py-8 text-center">
+                            <div className="text-5xl">🏗️</div>
+                            <div>
+                              <p className="text-slate-900 font-black text-xl">Өрөө {scRoomNumber}</p>
+                              <p className="text-slate-400 text-sm mt-1">Энэ өрөө одоогоор чөлөөтэй байна</p>
+                              {scRating && <div className="mt-2 flex justify-center"><StoreRatingBadge avg={scRating.avg} count={scRating.count} size="sm" /></div>}
+                            </div>
+                            <div className="w-full max-w-xs space-y-3 mt-2">
+                              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Та юу хийхийг хүсч байна вэ?</p>
+                              <motion.button whileTap={{ scale: 0.97 }}
+                                onClick={e => { e.stopPropagation(); setScSalesForm(f => ({ ...f, accessType: 'rent' })); setScShowSales(true); }}
+                                className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>
+                                <span className="text-xl">🔑</span> Түрээслэх
+                              </motion.button>
+                              <motion.button whileTap={{ scale: 0.97 }}
+                                onClick={e => { e.stopPropagation(); setScSalesForm(f => ({ ...f, accessType: 'buy' })); setScShowSales(true); }}
+                                className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2"
+                                style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                                <span className="text-xl">🏢</span> Худалдаж авах
+                              </motion.button>
+                              <motion.button whileTap={{ scale: 0.97 }}
+                                onClick={e => { e.stopPropagation(); setScSalesForm(f => ({ ...f, accessType: 'showcase' })); setScShowSales(true); }}
+                                className="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 border-2 border-amber-200 bg-amber-50">
+                                <span className="text-xl">📋</span> <span className="text-amber-700">Танилцуулга болгон ашиглах</span>
+                              </motion.button>
+                              {hasStoreAccess('service_center', scRoomNumber) && (
+                                <motion.button whileTap={{ scale: 0.97 }}
+                                  onClick={e => { e.stopPropagation(); openStoreProfileEditor('service_center', scRoomNumber, selectedServiceCenter.name); }}
+                                  className="w-full py-3 rounded-2xl font-black text-slate-600 text-sm flex items-center justify-center gap-2 border border-slate-200 bg-slate-50">
+                                  🛎️ Дэлгүүр тохируулах
+                                </motion.button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── SALES OVERLAY ── */}
+                <AnimatePresence>
+                  {scShowSales && (() => {
+                    const SC_RENT_TIERS = [
+                      { tier: '1', label: '1 Үйлчилгээ', price: '50,000₮', sub: 'сарын' },
+                      { tier: '3', label: '3 Үйлчилгээ', price: '130,000₮', sub: 'сарын' },
+                      { tier: '5', label: '5 Үйлчилгээ', price: '200,000₮', sub: 'сарын' },
+                      { tier: '10', label: '10 Үйлчилгээ', price: '350,000₮', sub: 'сарын' },
+                      { tier: '20', label: '20 Үйлчилгээ', price: '600,000₮', sub: 'сарын' },
+                    ] as const;
+                    const SC_BUY_TIERS = [
+                      { tier: '1', label: '1 Үйлчилгээ', price: '1,000,000₮', sub: 'нэг удаа' },
+                      { tier: '3', label: '3 Үйлчилгээ', price: '2,500,000₮', sub: 'нэг удаа' },
+                      { tier: '5', label: '5 Үйлчилгээ', price: '4,000,000₮', sub: 'нэг удаа' },
+                      { tier: '10', label: '10 Үйлчилгээ', price: '7,000,000₮', sub: 'нэг удаа' },
+                      { tier: '20', label: '20 Үйлчилгээ', price: '12,000,000₮', sub: 'нэг удаа' },
+                    ] as const;
+                    const SC_SOCIAL_LINKS = [
+                      { key: 'website', label: 'Website', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> },
+                      { key: 'facebook', label: 'Facebook', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+                      { key: 'youtube', label: 'YouTube', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
+                      { key: 'instagram', label: 'Instagram', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="url(#scigs)"><defs><linearGradient id="scigs" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#dc2743"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
+                    ] as const;
+                    const scSelectedSocialCount = Object.values(scSalesForm.socialLinks).filter(Boolean).length;
+                    const scTotalSocialPrice = scSelectedSocialCount * 20000;
+                    return (
+                      <motion.div key="sc-sales" initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+                        className="absolute inset-0 z-30 flex flex-col bg-slate-50 overflow-hidden"
+                        onClick={e => e.stopPropagation()}>
+                        <div className="shrink-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              <span className="text-lg">🛎️</span>
+                            </div>
+                            <div>
+                              <p className="text-slate-900 font-black text-base leading-tight">Борлуулалтын Алба</p>
+                              <p className="text-amber-500 text-[10px] font-bold tracking-wider">{selectedServiceCenter?.name} · Sales Office</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setScShowSales(false)} className="p-2 rounded-xl border border-slate-200 text-slate-400"><X size={16} /></button>
+                        </div>
+                        {scSalesDone ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                            <div className="text-6xl">✅</div>
+                            <p className="text-slate-900 font-black text-xl">Хүсэлт илгээгдлээ!</p>
+                            <p className="text-slate-400 text-sm">Бид тантай удахгүй холбогдох болно.</p>
+                            <button onClick={() => { setScShowSales(false); setScSalesDone(false); setScSalesForm({ name: '', phone: '', serviceName: '', serviceType: '', accessType: '', itemTier: '', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } }); }}
+                              className="px-6 py-3 rounded-2xl font-black text-white text-sm mt-2"
+                              style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>Буцах</button>
+                          </div>
+                        ) : (
+                          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ touchAction: 'pan-y' }}>
+                            <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                              <p className="font-black text-base mb-1">Үйлчилгээний Өрөө · Тасаг</p>
+                              <p className="text-white/80 text-xs leading-relaxed">{selectedServiceCenter?.name}-д өөрийн үйлчилгээний өрөөгөө байрлуул. Түрээслэх, худалдаж авах, эсвэл танилцуулга болгон ашиглах боломжтой.</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-4 space-y-3">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Үндсэн мэдээлэл</p>
+                              {[
+                                { key: 'name', label: 'Нэр', placeholder: 'Жишээ: Батбаяр' },
+                                { key: 'phone', label: 'Дугаар', placeholder: 'Жишээ: 9999 9999' },
+                                { key: 'serviceName', label: 'Үйлчилгээний Нэр', placeholder: 'Жишээ: Beauty Studio' },
+                                { key: 'serviceType', label: 'Үйлчилгээний Төрөл', placeholder: 'Жишээ: Үсчин, Гоо сайхан' },
+                              ].map(f => (
+                                <div key={f.key}>
+                                  <label className="text-slate-400 text-[10px] font-bold block mb-1">{f.label}</label>
+                                  <input type="text" value={(scSalesForm as any)[f.key]}
+                                    onChange={e => setScSalesForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                    onClick={e => e.stopPropagation()}
+                                    placeholder={f.placeholder}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all" />
+                                </div>
+                              ))}
+                            </div>
+                            <div className="bg-white rounded-2xl p-4">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Хандалтын Төрөл</p>
+                              <div className="flex flex-col gap-2">
+                                {[
+                                  { val: 'rent', label: 'Түрээслэх', icon: '🔑', desc: 'Сар бүр төлбөр' },
+                                  { val: 'buy', label: 'Худалдаж Авах', icon: '🏢', desc: 'Нэг удаагийн төлбөр' },
+                                  { val: 'showcase', label: 'Танилцуулга Болгон Ашиглах', icon: '📋', desc: 'Social link байршуулах' },
+                                ].map(opt => (
+                                  <button key={opt.val} onClick={() => setScSalesForm(prev => ({ ...prev, accessType: opt.val as any, itemTier: '' }))}
+                                    className={cn('flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all', scSalesForm.accessType === opt.val ? 'border-purple-400 bg-purple-50' : 'border-slate-100 bg-slate-50')}>
+                                    <span className="text-xl">{opt.icon}</span>
+                                    <div className="flex-1">
+                                      <p className={cn('font-black text-sm', scSalesForm.accessType === opt.val ? 'text-purple-700' : 'text-slate-700')}>{opt.label}</p>
+                                      <p className="text-slate-400 text-xs">{opt.desc}</p>
+                                    </div>
+                                    {scSalesForm.accessType === opt.val && <div className="w-5 h-5 rounded-full bg-purple-400 flex items-center justify-center"><span className="text-white text-xs font-black">✓</span></div>}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {scSalesForm.accessType === 'rent' && (
+                              <div className="bg-white rounded-2xl p-4">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Түрээс</p>
+                                <div className="space-y-2">
+                                  {SC_RENT_TIERS.map(t => (
+                                    <button key={t.tier} onClick={() => setScSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                      className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all', scSalesForm.itemTier === t.tier ? 'border-purple-400 bg-purple-50' : 'border-slate-100 bg-slate-50')}>
+                                      <div className="flex items-center gap-3"><span className="text-xs">🛎️</span><span className={cn('font-black text-sm', scSalesForm.itemTier === t.tier ? 'text-purple-700' : 'text-slate-700')}>{t.label}</span></div>
+                                      <div className="text-right"><p className={cn('font-black text-sm', scSalesForm.itemTier === t.tier ? 'text-purple-600' : 'text-slate-900')}>{t.price}</p><p className="text-slate-400 text-[10px]">{t.sub}</p></div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {scSalesForm.accessType === 'buy' && (
+                              <div className="bg-white rounded-2xl p-4">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Худалдан Авалт</p>
+                                <div className="space-y-2">
+                                  {SC_BUY_TIERS.map(t => (
+                                    <button key={t.tier} onClick={() => setScSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                      className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all', scSalesForm.itemTier === t.tier ? 'border-purple-400 bg-purple-50' : 'border-slate-100 bg-slate-50')}>
+                                      <div className="flex items-center gap-3"><span className="text-xs">🏢</span><span className={cn('font-black text-sm', scSalesForm.itemTier === t.tier ? 'text-purple-700' : 'text-slate-700')}>{t.label}</span></div>
+                                      <div className="text-right"><p className={cn('font-black text-sm', scSalesForm.itemTier === t.tier ? 'text-purple-600' : 'text-slate-900')}>{t.price}</p><p className="text-slate-400 text-[10px]">{t.sub}</p></div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {scSalesForm.accessType === 'showcase' && (
+                              <div className="bg-white rounded-2xl p-4 space-y-3">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Social Links · 20,000₮ / Сарын тус бүр</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {SC_SOCIAL_LINKS.map(s => {
+                                    const checked = scSalesForm.socialLinks[s.key as keyof typeof scSalesForm.socialLinks];
+                                    return (
+                                      <button key={s.key} onClick={() => setScSalesForm(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [s.key]: !prev.socialLinks[s.key as keyof typeof prev.socialLinks] } }))}
+                                        className={cn('flex items-center gap-2 px-3 py-3 rounded-2xl border-2 transition-all', checked ? 'border-purple-400 bg-purple-50' : 'border-slate-100 bg-slate-50')}>
+                                        {s.icon}<span className={cn('font-black text-xs flex-1 text-left', checked ? 'text-purple-700' : 'text-slate-600')}>{s.label}</span>
+                                        {checked && <span className="text-purple-500 text-xs font-black">✓</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {scSelectedSocialCount > 0 && (
+                                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-purple-50 border border-purple-200">
+                                    <span className="text-purple-700 text-xs font-bold">{scSelectedSocialCount} сонголт</span>
+                                    <span className="text-purple-700 font-black text-sm">{scTotalSocialPrice.toLocaleString()}₮/сар</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <button
+                              disabled={scSalesSubmitting || !scSalesForm.name.trim() || !scSalesForm.phone.trim() || !scSalesForm.accessType}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setScSalesSubmitting(true);
+                                try {
+                                  await addDoc(collection(db, 'service_center_sales'), {
+                                    ...scSalesForm,
+                                    centerId: selectedServiceCenter?.id,
+                                    centerName: selectedServiceCenter?.name,
+                                    floor: scFloor,
+                                    roomNumber: scRoomNumber,
+                                    timestamp: serverTimestamp(),
+                                  });
+                                  setScSalesDone(true);
+                                } catch {}
+                                setScSalesSubmitting(false);
+                              }}
+                              className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40"
+                              style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>
+                              {scSalesSubmitting ? 'Илгээж байна...' : 'Хүсэлт Илгээх'}
+                            </button>
+                            <div className="h-6" />
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+
+                {/* ── Enter/Exit popup ── */}
+                <AnimatePresence>
+                  {showScEnterExit && (() => {
+                    const pw = 200; const ph = 140;
+                    const vw = window.innerWidth; const vh = window.innerHeight;
+                    const left = Math.min(Math.max(scTapPos.x - pw / 2, 12), vw - pw - 12);
+                    const top = scTapPos.y + ph + 16 > vh ? scTapPos.y - ph - 16 : scTapPos.y + 16;
+                    return (
+                      <motion.div key="sc-enterexit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-20" onClick={e => { e.stopPropagation(); setShowScEnterExit(false); }}>
+                        <motion.div initial={{ scale: 0, opacity: 0.6 }} animate={{ scale: 3, opacity: 0 }} transition={{ duration: 0.4 }}
+                          className="absolute w-12 h-12 rounded-full bg-white/30 pointer-events-none"
+                          style={{ left: scTapPos.x - 24, top: scTapPos.y - 24 }} />
+                        <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.7, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                          className="absolute bg-white rounded-3xl shadow-2xl p-4"
+                          style={{ left, top, width: pw }} onClick={e => e.stopPropagation()}>
+                          <div className="mb-3 pb-3 border-b border-slate-100">
+                            <p className="text-slate-400 text-[10px] font-black uppercase">#{scRoomNumber}</p>
+                            <p className="text-slate-900 font-black text-sm">{selectedServiceCenter?.name}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setShowScEnterExit(false); setScMode('store'); setScInStorePage(0); }}
+                              className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                              style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}>Орох</button>
+                            <button onClick={() => { setShowScEnterExit(false); handleStoreRatingExit(selectedServiceCenter?.name || '', scRoomNumber, 'service_center', () => { setScMode('floor'); }); }}
+                              className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm bg-slate-100">Гарах</button>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+
+        {/* ===== OTHER MALL — FULL SCREEN ===== */}
+        <AnimatePresence>
+          {showOtherMall && (() => {
+            const maxFloors = selectedOtherMall?.floors ?? 1;
+            const omRoomNumber = `${omFloor}${String(omStoreIndex + 1).padStart(4, '0')}`;
+            omModeRef.current = omMode;
+            omInStorePageRef.current = omInStorePage;
+            const handleOmTouchStart = (e: React.TouchEvent) => {
+              omSwipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            };
+            const handleOmTouchMove = (e: React.TouchEvent) => {
+              if (otherMallView === 'navigate') { e.preventDefault(); }
+            };
+            const handleOmTouchEnd = (e: React.TouchEvent) => {
+              if (!omSwipeStartRef.current) return;
+              const dx = e.changedTouches[0].clientX - omSwipeStartRef.current.x;
+              const dy = e.changedTouches[0].clientY - omSwipeStartRef.current.y;
+              omSwipeStartRef.current = null;
+              if (otherMallView !== 'navigate') return;
+              if (omModeRef.current === 'store') {
+                // дэлгүүр дотор — зөвхөн horizontal swipe, бараа харах
+                if (Math.abs(dy) > Math.abs(dx) || Math.abs(dx) < 40) return;
+                const cur = omInStorePageRef.current;
+                const max = omTotalPagesRef.current;
+                if (dx < 0 && cur < max - 1) { setOmStorePageDir(1); setOmInStorePage(cur + 1); }
+                else if (dx > 0 && cur > 0) { setOmStorePageDir(-1); setOmInStorePage(cur - 1); }
+                return;
+              }
+              // давхар дээр — floor/store солих
+              if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+                if (dy < -40) setOmFloor(f => Math.max(1, f - 1));
+                else setOmFloor(f => Math.min(maxFloors, f + 1));
+                setOmStoreIndex(0); setOmInStorePage(0);
+                setOmMode('floor'); omModeRef.current = 'floor';
+              } else if (Math.abs(dx) > 40) {
+                if (dx < -40) setOmStoreIndex(i => i + 1);
+                else setOmStoreIndex(i => Math.max(0, i - 1));
+              }
+            };
+            const handleOmTap = (e: React.MouseEvent) => {
+              const now = Date.now();
+              if (now - omDoubleTapRef.current < 300) {
+                omDoubleTapRef.current = 0;
+                if (otherMallView === 'navigate') { setOmTapPos({ x: e.clientX, y: e.clientY }); setShowOmEnterExit(true); }
+              } else { omDoubleTapRef.current = now; }
+            };
+            return (
+              <motion.div key="othermall" initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+                transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+                className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-slate-50 select-none"
+                style={{ touchAction: otherMallView === 'navigate' ? 'none' : 'auto', overscrollBehavior: 'none' }}
+                onTouchStart={handleOmTouchStart} onTouchMove={handleOmTouchMove} onTouchEnd={handleOmTouchEnd} onClick={handleOmTap}>
+
+                {/* Header */}
+                <div className="shrink-0 bg-white border-b border-slate-100 shadow-sm">
+                  <div className="flex items-center justify-between px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                        <span className="text-white text-base">🏪</span>
+                      </div>
+                      <div>
+                        <p className="text-slate-900 font-black text-base leading-tight">
+                          {otherMallView === 'navigate' && selectedOtherMall ? selectedOtherMall.name : 'Бусад Худалдааны Төв'}
+                        </p>
+                        <p className="text-emerald-500 text-[10px] font-bold tracking-wider">
+                          {otherMallView === 'navigate' ? `${omFloor}F · Тоот ${omRoomNumber}` : 'Marketplace'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {otherMallView === 'navigate' && (
+                        <button onClick={e => { e.stopPropagation(); setShowOmHelp(true); }}
+                          className="p-2 rounded-xl border border-slate-200 text-slate-400">
+                          <HelpCircle size={16} />
+                        </button>
+                      )}
+                      {otherMallView !== 'home' && (
+                        <button onClick={e => { e.stopPropagation(); setOtherMallView('home'); setSelectedOtherMall(null); setOmFloor(1); setOmStoreIndex(0); setOmMode('floor'); }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">← Буцах</button>
+                      )}
+                      <button onClick={e => { e.stopPropagation(); setShowOtherMall(false); setOtherMallView('home'); setSelectedOtherMall(null); }}
+                        className="p-2 rounded-xl border border-slate-200 text-slate-400">
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  {/* Floor dots when navigating */}
+                  {otherMallView === 'navigate' && selectedOtherMall && (
+                    <div className="flex items-center justify-center gap-1.5 pb-3">
+                      {Array.from({ length: Math.min(maxFloors, 10) }, (_, i) => i + 1).map(f => (
+                        <button key={f} onClick={e => { e.stopPropagation(); setOmFloor(f); setOmStoreIndex(0); setOmInStorePage(0); setOmMode('floor'); }}
+                          className={cn('rounded-full transition-all', omFloor === f ? 'w-6 h-2 bg-emerald-500' : 'w-2 h-2 bg-slate-200')} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── HOME: 2x3 grid ── */}
+                {otherMallView === 'home' && (
+                  <div className="flex-1 flex flex-col p-4 justify-center">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { delay: 0.05, icon: '🏗️', label: 'Худалдааны Төв Үүсгэх', sub: 'Шинэ нэмэх', bg: 'linear-gradient(135deg,#059669,#10b981)', textColor: 'text-white', subColor: 'text-white/70', onClick: (e: React.MouseEvent) => { e.stopPropagation(); setOtherMallView('create'); setOtherMallDone(false); setOtherMallError(''); setOtherMallForm({ name: '', floors: '', imageUrl: '' }); } },
+                        { delay: 0.08, icon: '🏬', label: 'Худалдааны Төв Жагсаалт', sub: `${otherMalls.length} бүртгэлтэй`, bg: 'white', textColor: 'text-slate-900', subColor: 'text-slate-400', border: true, onClick: (e: React.MouseEvent) => { e.stopPropagation(); setOtherMallView('list'); } },
+                        { delay: 0.11, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.14, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.17, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                        { delay: 0.20, icon: '⏳', label: 'Удахгүй', sub: '', bg: '#f1f5f9', textColor: 'text-slate-400', subColor: 'text-slate-300', disabled: true, onClick: (e: React.MouseEvent) => e.stopPropagation() },
+                      ].map((item, i) => (
+                        <motion.button key={i} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: item.delay }}
+                          onClick={item.onClick}
+                          disabled={item.disabled}
+                          className={`relative overflow-hidden rounded-3xl p-5 text-left shadow-sm aspect-square flex flex-col justify-between ${item.border ? 'border border-slate-100' : ''}`}
+                          style={{ background: item.bg }}>
+                          <div className="text-3xl">{item.icon}</div>
+                          <div>
+                            <p className={`font-black text-sm leading-tight ${item.textColor}`}>{item.label}</p>
+                            {item.sub ? <p className={`text-xs mt-0.5 ${item.subColor}`}>{item.sub}</p> : null}
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── CREATE FORM ── */}
+                {otherMallView === 'create' && (
+                  <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4" onClick={e => e.stopPropagation()}>
+                    {otherMallDone ? (
+                      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+                        <div className="text-6xl">✅</div>
+                        <p className="text-slate-900 font-black text-xl">Амжилттай үүслээ!</p>
+                        <button onClick={() => { setOtherMallDone(false); setOtherMallView('list'); }}
+                          className="px-6 py-3 rounded-2xl font-black text-white text-sm mt-2"
+                          style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                          Жагсаалт харах →
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#059669,#10b981)' }}>
+                          <p className="font-black text-base">Шинэ Худалдааны Төв</p>
+                          <p className="text-white/70 text-xs mt-0.5">Мэдээллээ бөглөөд нэмнэ үү</p>
+                        </div>
+                        <div className="bg-white rounded-2xl p-4 space-y-3">
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">НЭР</label>
+                            <input type="text" value={otherMallForm.name}
+                              onChange={e => { e.stopPropagation(); setOtherMallForm(p => ({ ...p, name: e.target.value })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='Жишээ: "Sunday Plaza"'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                          </div>
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">ХЭДЭН ДАВХАР</label>
+                            <input type="text" inputMode="numeric" pattern="[0-9]*" value={otherMallForm.floors}
+                              onChange={e => { e.stopPropagation(); setOtherMallForm(p => ({ ...p, floors: e.target.value.replace(/[^0-9]/g, '') })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='Жишээ: 7'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                          </div>
+                          <div>
+                            <label className="text-slate-400 text-[10px] font-black block mb-1">ЗУРГИЙН ХОЛБООС (заавал биш)</label>
+                            <input type="text" value={otherMallForm.imageUrl}
+                              onChange={e => { e.stopPropagation(); setOtherMallForm(p => ({ ...p, imageUrl: e.target.value })); }}
+                              onTouchStart={e => e.stopPropagation()}
+                              placeholder='https://...'
+                              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all" />
+                          </div>
+                        </div>
+                        {otherMallError ? <p className="text-red-500 text-xs font-bold px-1">{otherMallError}</p> : null}
+                        <button
+                          disabled={otherMallSubmitting || !otherMallForm.name.trim() || !otherMallForm.floors.trim()}
+                          onTouchStart={e => e.stopPropagation()}
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            const name = otherMallForm.name.trim();
+                            const floors = parseInt(otherMallForm.floors) || 0;
+                            if (!name || !floors) return;
+                            setOtherMallSubmitting(true);
+                            setOtherMallError('');
+                            try {
+                              await addDoc(collection(db, 'other_malls'), {
+                                name,
+                                floors,
+                                ...(otherMallForm.imageUrl.trim() ? { imageUrl: otherMallForm.imageUrl.trim() } : {}),
+                                timestamp: serverTimestamp(),
+                              });
+                              setOtherMallDone(true);
+                            } catch (err: any) {
+                              setOtherMallError(err?.message || 'Алдаа гарлаа. Дахин оролдоно уу.');
+                            }
+                            setOtherMallSubmitting(false);
+                          }}
+                          className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40"
+                          style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                          {otherMallSubmitting ? 'Үүсгэж байна...' : 'Үүсгэх'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* ── LIST ── */}
+                {otherMallView === 'list' && (
+                  <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3" style={{ touchAction: 'pan-y' }}>
+                    {otherMalls.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div className="text-5xl">🏗️</div>
+                        <p className="text-slate-400 font-bold text-sm">Худалдааны төв байхгүй байна</p>
+                        <button onClick={() => setOtherMallView('create')}
+                          className="px-5 py-2.5 rounded-xl font-black text-white text-sm"
+                          style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                          Нэмэх +
+                        </button>
+                      </div>
+                    ) : otherMalls.map((mall, idx) => (
+                      <motion.button key={mall.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
+                        onClick={e => { e.stopPropagation(); setSelectedOtherMall({ id: mall.id, name: mall.name, floors: mall.floors }); setOmFloor(1); setOmStoreIndex(0); setOmMode('floor'); setOmInStorePage(0); setOtherMallView('navigate'); }}
+                        className="w-full rounded-3xl overflow-hidden shadow-sm border border-slate-100 text-left relative"
+                        style={{ height: '30vh' }}>
+                        {/* Cover image / gradient */}
+                        <div className="absolute inset-0"
+                          style={mall.imageUrl
+                            ? { backgroundImage: `url(${mall.imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                            : { background: `linear-gradient(135deg, hsl(${(idx * 67 + 180) % 360},55%,28%), hsl(${(idx * 67 + 220) % 360},60%,38%))` }
+                          }
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                        {/* Badge */}
+                        <div className="absolute top-3 left-3 bg-black/30 backdrop-blur-sm rounded-xl px-2.5 py-1">
+                          <span className="text-white text-[10px] font-black tracking-wider">{mall.floors}F</span>
+                        </div>
+                        {/* Center icon if no image */}
+                        {!mall.imageUrl && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-6xl opacity-40">🏬</span>
+                          </div>
+                        )}
+                        {/* Bottom info */}
+                        <div className="absolute bottom-0 inset-x-0 px-4 py-4">
+                          <p className="text-white font-black text-lg leading-tight">{mall.name}</p>
+                          <p className="text-white/60 text-xs mt-0.5">{mall.floors} давхар · Дотогш орох →</p>
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                )}
+
+                {/* ── NAVIGATE: floor storefront ── */}
+                {otherMallView === 'navigate' && selectedOtherMall && omMode === 'floor' && (() => {
+                  const floorKey = `${selectedOtherMall.id}_${omFloor}`;
+                  const floorDirection = omFloorInfo[floorKey] || '';
+                  return (
+                    <motion.div key={`om-floor-${omFloor}-${omStoreIndex}`}
+                      initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                      className="flex-1 flex flex-col overflow-hidden">
+                      {/* Storefront visual */}
+                      {(() => {
+                        const omProfile = storeProfiles[`other_mall__${omRoomNumber}`];
+                        return (
+                          <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden"
+                            style={{ background: omProfile?.imageUrl ? 'none' : `linear-gradient(135deg, hsl(${(omFloor * 47 + omStoreIndex * 31) % 360},55%,28%), hsl(${(omFloor * 47 + omStoreIndex * 31 + 40) % 360},60%,35%))` }}>
+                            {omProfile?.imageUrl && <img src={omProfile.imageUrl} alt="storefront" className="absolute inset-0 w-full h-full object-cover" />}
+                            {omProfile?.imageUrl && <div className="absolute inset-0 bg-black/40" />}
+                            {!omProfile?.imageUrl && <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at 50% 40%, white 0%, transparent 65%)' }} />}
+                            {omFloor > 1 && <div className="absolute top-4 left-1/2 -translate-x-1/2 text-white/40 text-xs font-bold">{omFloor - 1}F доод давхар ↑</div>}
+                            {omFloor < maxFloors && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/40 text-xs font-bold">{omFloor + 1}F дээд давхар ↓</div>}
+                            <div className="relative z-10 flex flex-col items-center gap-3">
+                              <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-6 py-3 text-center">
+                                {hasStoreAccess('other_mall', omRoomNumber) && storeAccess[`other_mall__${omRoomNumber}`] && (
+                                  <p className="text-amber-300 text-[9px] font-black uppercase tracking-widest mb-0.5">🔑 Таны тоот</p>
+                                )}
+                                <p className="text-white/60 text-[10px] font-black tracking-widest uppercase mb-0.5">Тоот · Room</p>
+                                <p className="text-white font-black text-4xl tracking-wider">{omRoomNumber}</p>
+                                {omProfile?.storeName && <p className="text-white font-black text-sm mt-1">{omProfile.storeName}</p>}
+                                {(() => { const r = storeRatings[`other_mall__${omRoomNumber}`]; return r ? <div className="mt-1 flex justify-center"><StoreRatingBadge avg={r.avg} count={r.count} size="xs" /></div> : null; })()}
+                              </div>
+                              {floorDirection ? (
+                                <div className="bg-white/15 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-2 text-center">
+                                  <p className="text-white font-black text-sm">{floorDirection}</p>
+                                </div>
+                              ) : (
+                                <button onClick={e => { e.stopPropagation(); setOmEditFloorValue(''); setOmEditFloor(true); }}
+                                  className="bg-white/10 border border-white/20 rounded-xl px-4 py-2 text-center">
+                                  <p className="text-white/60 text-xs font-bold">+ Чиглэл нэмэх</p>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {/* Info bottom */}
+                      <div className="shrink-0 bg-white">
+                        <div className="px-6 pt-4 pb-3 border-b border-slate-100">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-slate-400 text-xs font-black tracking-widest uppercase mb-1">{selectedOtherMall.name} · {omFloor}-р давхар</p>
+                              <p className="text-slate-900 font-black text-xl">{storeProfiles[`other_mall__${omRoomNumber}`]?.storeName || `Тоот ${omRoomNumber}`}</p>
+                              {floorDirection && <p className="text-emerald-600 text-sm font-bold mt-0.5">{floorDirection}</p>}
+                            </div>
+                            <button onClick={e => { e.stopPropagation(); setOmEditFloorValue(floorDirection); setOmEditFloor(true); }}
+                              className="shrink-0 mt-1 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold">
+                              ✏️ Засах
+                            </button>
+                          </div>
+                        </div>
+                        <div className="px-6 py-4 flex items-center justify-between">
+                          <p className="text-slate-300 text-[10px]">← Swipe → дэлгүүр · ↑↓ давхар</p>
+                          <div className="flex gap-2">
+                            <button onClick={e => { e.stopPropagation(); setOmShowSales(true); }}
+                              className="px-4 py-2.5 rounded-xl font-black text-white text-xs"
+                              style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              🏪 Sales
+                            </button>
+                            <button onClick={e => { e.stopPropagation(); setOmMode('store'); omModeRef.current = 'store'; setOmInStorePage(0); }}
+                              className="px-5 py-2.5 rounded-xl font-black text-white text-sm"
+                              style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                              Орох →
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ── Floor direction edit modal ── */}
+                      <AnimatePresence>
+                        {omEditFloor && (
+                          <motion.div key="om-edit-floor" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-20 flex items-end bg-black/40"
+                            onClick={e => { e.stopPropagation(); setOmEditFloor(false); }}>
+                            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                              className="w-full bg-white rounded-t-3xl p-6 space-y-4"
+                              onClick={e => e.stopPropagation()}>
+                              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-2" />
+                              <div>
+                                <p className="text-slate-900 font-black text-base">{omFloor}-р давхарын чиглэл</p>
+                                <p className="text-slate-400 text-xs mt-0.5">Жишээ: Хувцас, Хоол, Электроник, Гоо сайхан...</p>
+                              </div>
+                              <input
+                                type="text"
+                                value={omEditFloorValue}
+                                onChange={e => setOmEditFloorValue(e.target.value)}
+                                onTouchStart={e => e.stopPropagation()}
+                                placeholder={`${omFloor}-р давхарын чиглэл`}
+                                autoFocus
+                                className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-base outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all"
+                              />
+                              <div className="flex gap-3">
+                                <button onClick={() => setOmEditFloor(false)}
+                                  className="flex-1 py-3 rounded-2xl font-black text-slate-600 bg-slate-100 text-sm">
+                                  Болих
+                                </button>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const val = omEditFloorValue.trim();
+                                    try {
+                                      const { setDoc, doc } = await import('firebase/firestore');
+                                      await setDoc(doc(db, 'other_mall_floors', floorKey), { direction: val, mallId: selectedOtherMall.id, floor: omFloor, timestamp: serverTimestamp() });
+                                    } catch {}
+                                    setOmEditFloor(false);
+                                  }}
+                                  className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                                  style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                                  Хадгалах
+                                </button>
+                              </div>
+                            </motion.div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })()}
+
+                {/* ── NAVIGATE: inside store ── */}
+                {otherMallView === 'navigate' && selectedOtherMall && omMode === 'store' && (() => {
+                  const omProf = storeProfiles[`other_mall__${omRoomNumber}`];
+                  const omRating = storeRatings[`other_mall__${omRoomNumber}`];
+                  const prods = storeProducts[`other_mall__${omRoomNumber}`] || [];
+                  const isOwner = hasStoreAccess('other_mall', omRoomNumber) && !!storeAccess[`other_mall__${omRoomNumber}`];
+                  const totalPages = omProf ? 1 + prods.length : 1;
+                  omTotalPagesRef.current = totalPages;
+                  const pageIdx = Math.min(omInStorePage, totalPages - 1);
+                  const prod = pageIdx > 0 ? prods[pageIdx - 1] : null;
+                  const storeKey = `other_mall__${omRoomNumber}`;
+                  const omBg = `linear-gradient(135deg,hsl(${(omFloor*47+omStoreIndex*31)%360},55%,28%),hsl(${(omFloor*47+omStoreIndex*31+40)%360},60%,35%))`;
+                  return (
+                    <div className="flex-1 flex flex-col overflow-hidden bg-black">
+                      <div className="absolute inset-0 overflow-hidden">
+                        {/* Story-style page bars */}
+                        <div className="absolute top-0 left-0 right-0 z-30 flex gap-1 px-3 pt-2 pointer-events-none">
+                          {[...Array(totalPages)].map((_, i) => (
+                            <div key={i} className={`h-0.5 flex-1 rounded-full transition-all ${i <= pageIdx ? 'bg-white' : 'bg-white/30'}`} />
+                          ))}
+                        </div>
+                        {/* Top controls (always visible) */}
+                        <div className="absolute top-4 left-0 right-0 z-30 flex items-center justify-between px-4">
+                          <button onClick={e => { e.stopPropagation(); setOmMode('floor'); omModeRef.current = 'floor'; setOmInStorePage(0); }}
+                            className="p-2 rounded-xl bg-black/40 backdrop-blur-sm">
+                            <X size={16} className="text-white" />
+                          </button>
+                          <div className="flex items-center gap-2">
+                            {pageIdx > 0 && isOwner && (
+                              <motion.button whileTap={{ scale: 0.97 }}
+                                onClick={e => { e.stopPropagation(); setAddProductMeta({ mallType: 'other_mall', roomNumber: omRoomNumber }); setStoreProductForm({ name: '', description: '', imageUrl: '', price: '', stock: '' }); setShowAddProduct(true); }}
+                                className="px-3 py-1.5 rounded-xl font-black text-white text-xs bg-emerald-500/80 backdrop-blur-sm">+ Нэмэх</motion.button>
+                            )}
+                            {pageIdx === 0 && omProf && isOwner && (
+                              <button onClick={e => { e.stopPropagation(); openStoreProfileEditor('other_mall', omRoomNumber, selectedOtherMall.name); }}
+                                className="px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-sm text-white text-xs font-black">✏️ Засах</button>
+                            )}
+                          </div>
+                        </div>
+                        {/* Horizontal page carousel */}
+                        <AnimatePresence initial={false} custom={omStorePageDir} mode="wait">
+                          <motion.div
+                            key={pageIdx}
+                            custom={omStorePageDir}
+                            variants={{ enter: (d: number) => ({ x: d > 0 ? '100%' : '-100%' }), center: { x: 0 }, exit: (d: number) => ({ x: d > 0 ? '-100%' : '100%' }) }}
+                            initial="enter" animate="center" exit="exit"
+                            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                            className="absolute inset-0 flex flex-col overflow-hidden"
+                          >
+                            {pageIdx === 0 ? (
+                              // ── Page 0: Store info ──
+                              omProf ? (
+                                <div className="absolute inset-0 flex flex-col">
+                                  <div className="shrink-0 h-48 relative flex items-center justify-center overflow-hidden"
+                                    style={{ background: omProf.imageUrl ? 'none' : omBg }}>
+                                    {omProf.imageUrl && <img src={omProf.imageUrl} alt="storefront" className="absolute inset-0 w-full h-full object-cover" />}
+                                    {omProf.imageUrl && <div className="absolute inset-0 bg-black/40" />}
+                                    {!omProf.imageUrl && <span className="text-7xl">🏪</span>}
+                                    <div className="absolute top-3 left-3 bg-black/30 rounded-xl px-2 py-1"><span className="text-white text-xs font-black">#{omRoomNumber}</span></div>
+                                  </div>
+                                  <div className="flex-1 overflow-y-auto bg-white px-5 py-5 space-y-4">
+                                    <div>
+                                      <p className="text-slate-900 font-black text-2xl">{omProf.storeName}</p>
+                                      {omRating && <div className="mt-1"><StoreRatingBadge avg={omRating.avg} count={omRating.count} size="sm" /></div>}
+                                      {omProf.description && <p className="text-slate-500 text-sm mt-2 leading-relaxed">{omProf.description}</p>}
+                                    </div>
+                                    {(omProf.website || omProf.phone) && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {omProf.website && <a href={omProf.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold">🌐 Website</a>}
+                                        {omProf.phone && <a href={`tel:${omProf.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-slate-100 text-slate-700 text-sm font-bold">📞 {omProf.phone}</a>}
+                                      </div>
+                                    )}
+                                    {(omProf.facebook || omProf.youtube || omProf.instagram) && (
+                                      <div className="flex gap-2 flex-wrap">
+                                        {omProf.facebook && <a href={omProf.facebook} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: '#1877f2' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>FB</a>}
+                                        {omProf.youtube && <a href={omProf.youtube} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: '#ff0000' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>YT</a>}
+                                        {omProf.instagram && <a href={omProf.instagram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 px-3 py-2 rounded-2xl font-bold text-white text-sm" style={{ background: 'linear-gradient(45deg,#f09433,#dc2743,#bc1888)' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>IG</a>}
+                                      </div>
+                                    )}
+                                    {hasStoreAccess('other_mall', omRoomNumber) && storeAccess[`other_mall__${omRoomNumber}`] && (
+                                      <div className="flex gap-3 pt-2 border-t border-slate-100">
+                                        <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); openStoreRenew('other_mall', omRoomNumber, selectedOtherMall.name); }} className="flex-1 py-3 rounded-2xl font-black text-white text-sm flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>🔄 Сунгах</motion.button>
+                                        <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); openStoreSell('other_mall', omRoomNumber, selectedOtherMall.name); }} className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm flex items-center justify-center gap-2 border border-slate-200 bg-slate-50">💰 Зарах</motion.button>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {prods.length > 0 && (
+                                    <button onClick={() => goTo(1)} className="shrink-0 flex items-center justify-between px-5 py-3 bg-white border-t border-slate-100 active:bg-slate-50">
+                                      <span className="text-sm font-black text-slate-700">🛒 Бараа ({prods.length})</span>
+                                      <div className="flex items-center gap-1 text-slate-400"><span className="text-xs font-bold">Харах</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                // Empty state
+                                <div className="absolute inset-0 flex flex-col">
+                                  <div className="shrink-0 h-48 relative flex items-center justify-center overflow-hidden" style={{ background: omBg }}>
+                                    <span className="text-7xl">🏪</span>
+                                    <div className="absolute top-3 left-3 bg-black/30 rounded-xl px-2 py-1"><span className="text-white text-xs font-black">#{omRoomNumber}</span></div>
+                                  </div>
+                                  <div className="flex-1 flex flex-col items-center justify-center gap-5 bg-white px-6 py-8 text-center">
+                                    <div className="text-5xl">🏗️</div>
+                                    <div>
+                                      <p className="text-slate-900 font-black text-xl">Тоот {omRoomNumber}</p>
+                                      <p className="text-slate-400 text-sm mt-1">Энэ тоот одоогоор чөлөөтэй байна</p>
+                                      {omRating && <div className="mt-2 flex justify-center"><StoreRatingBadge avg={omRating.avg} count={omRating.count} size="sm" /></div>}
+                                    </div>
+                                    <div className="w-full max-w-xs space-y-3 mt-2">
+                                      <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Та юу хийхийг хүсч байна вэ?</p>
+                                      <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); setOmSalesForm(f => ({ ...f, accessType: 'rent' })); setOmShowSales(true); }} className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}><span className="text-xl">🔑</span> Түрээслэх</motion.button>
+                                      <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); setOmSalesForm(f => ({ ...f, accessType: 'buy' })); setOmShowSales(true); }} className="w-full py-4 rounded-2xl font-black text-white text-base flex items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg,#16a34a,#22c55e)' }}><span className="text-xl">🏪</span> Худалдаж авах</motion.button>
+                                      <motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); setOmSalesForm(f => ({ ...f, accessType: 'showcase' })); setOmShowSales(true); }} className="w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 border-2 border-amber-200 bg-amber-50"><span className="text-xl">📋</span><span className="text-amber-700">Танилцуулга болгон ашиглах</span></motion.button>
+                                      {hasStoreAccess('other_mall', omRoomNumber) && (<motion.button whileTap={{ scale: 0.97 }} onClick={e => { e.stopPropagation(); openStoreProfileEditor('other_mall', omRoomNumber, selectedOtherMall.name); }} className="w-full py-3 rounded-2xl font-black text-slate-600 text-sm flex items-center justify-center gap-2 border border-slate-200 bg-slate-50">🏪 Дэлгүүр тохируулах</motion.button>)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            ) : prod ? (
+                              // ── Pages 1+: Product pages ──
+                              <div className="absolute inset-0 bg-black flex flex-col overflow-hidden">
+                                <div className="relative" style={{ flex: '0 0 80%' }}>
+                                  {prod.imageUrl
+                                    ? <img src={prod.imageUrl} alt={prod.name} className="absolute inset-0 w-full h-full object-cover" />
+                                    : <div className="absolute inset-0 bg-slate-800 flex items-center justify-center text-7xl">📦</div>}
+                                  {prod.description && (
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/50 to-transparent px-4 pt-12 pb-4">
+                                      <p className="text-white text-sm leading-relaxed">{prod.description}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="bg-white flex flex-col justify-center gap-1.5 px-4 py-3" style={{ flex: '0 0 20%' }}>
+                                  <div className="flex items-baseline gap-3">
+                                    <p className="text-slate-900 font-black text-lg leading-tight flex-1 truncate">{prod.name}</p>
+                                    <p className="text-emerald-600 font-black text-xl shrink-0">{prod.price.toLocaleString()}₮</p>
+                                  </div>
+                                  {prod.stock > 0 && <p className="text-slate-400 text-[10px] font-bold">{prod.stock} ширхэг үлдсэн</p>}
+                                  <div className="flex gap-2">
+                                    <motion.button whileTap={{ scale: 0.97 }} onClick={async e => { e.stopPropagation(); await addDoc(collection(db, 'store_orders'), { mallType: 'other_mall', roomNumber: omRoomNumber, productId: prod.id, productName: prod.name, price: prod.price, type: 'buy', buyer: appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon', timestamp: serverTimestamp() }); alert('Захиалга амжилттай!'); }} className="flex-1 py-2.5 rounded-xl font-black text-white text-sm" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>🛒 Худалдаж авах</motion.button>
+                                    <motion.button whileTap={{ scale: 0.97 }} onClick={async e => { e.stopPropagation(); await addDoc(collection(db, 'store_orders'), { mallType: 'other_mall', roomNumber: omRoomNumber, productId: prod.id, productName: prod.name, price: prod.price, type: 'order', buyer: appUser?.username || appUser?.uid || auth.currentUser?.uid || 'anon', timestamp: serverTimestamp() }); alert('Захиалга амжилттай!'); }} className="flex-1 py-2.5 rounded-xl font-black text-slate-600 text-sm border border-slate-200">📋 Захиалах</motion.button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </motion.div>
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ── OTHER MALL SALES OVERLAY ── */}
+                <AnimatePresence>
+                  {omShowSales && (() => {
+                    const RENT_TIERS = [
+                      { tier: '10', label: '10 Бараа', price: '100,000₮', sub: 'сарын' },
+                      { tier: '25', label: '25 Бараа', price: '250,000₮', sub: 'сарын' },
+                      { tier: '50', label: '50 Бараа', price: '500,000₮', sub: 'сарын' },
+                      { tier: '100', label: '100 Бараа', price: '1,000,000₮', sub: 'сарын' },
+                      { tier: '250', label: '250 Бараа', price: '2,500,000₮', sub: 'сарын' },
+                    ] as const;
+                    const BUY_TIERS = [
+                      { tier: '10', label: '10 Бараа', price: '2,000,000₮', sub: 'нэг удаа' },
+                      { tier: '25', label: '25 Бараа', price: '5,000,000₮', sub: 'нэг удаа' },
+                      { tier: '50', label: '50 Бараа', price: '9,000,000₮', sub: 'нэг удаа' },
+                      { tier: '100', label: '100 Бараа', price: '25,000,000₮', sub: 'нэг удаа' },
+                      { tier: '250', label: '250 Бараа', price: '50,000,000₮', sub: 'нэг удаа' },
+                    ] as const;
+                    const SOCIAL_LINKS = [
+                      { key: 'website', label: 'Website', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> },
+                      { key: 'facebook', label: 'Facebook', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+                      { key: 'youtube', label: 'YouTube', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
+                      { key: 'instagram', label: 'Instagram', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="url(#omigs)"><defs><linearGradient id="omigs" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#dc2743"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
+                    ] as const;
+                    const selectedSocialCount = Object.values(omSalesForm.socialLinks).filter(Boolean).length;
+                    const totalSocialPrice = selectedSocialCount * 20000;
+                    return (
+                      <motion.div key="om-sales" initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+                        className="absolute inset-0 z-30 flex flex-col bg-slate-50 overflow-hidden"
+                        onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="shrink-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              <span className="text-lg">🏪</span>
+                            </div>
+                            <div>
+                              <p className="text-slate-900 font-black text-base leading-tight">Борлуулалтын Алба</p>
+                              <p className="text-amber-500 text-[10px] font-bold tracking-wider">{selectedOtherMall?.name} · Sales Office</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setOmShowSales(false)} className="p-2 rounded-xl border border-slate-200 text-slate-400"><X size={16} /></button>
+                        </div>
+
+                        {omSalesDone ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                            <div className="text-6xl">✅</div>
+                            <p className="text-slate-900 font-black text-xl">Хүсэлт илгээгдлээ!</p>
+                            <p className="text-slate-400 text-sm">Бид тантай удахгүй холбогдох болно.</p>
+                            <button onClick={() => { setOmShowSales(false); setOmSalesDone(false); setOmSalesForm({ name: '', phone: '', storeName: '', storeType: '', accessType: '', itemTier: '', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } }); }}
+                              className="px-6 py-3 rounded-2xl font-black text-white text-sm mt-2"
+                              style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>Буцах</button>
+                          </div>
+                        ) : (
+                          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ touchAction: 'pan-y' }}>
+                            <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              <p className="font-black text-base mb-1">Цахим Лангуу · Павилон</p>
+                              <p className="text-white/80 text-xs leading-relaxed">{selectedOtherMall?.name}-д өөрийн дэлгүүрээ байрлуул. Түрээслэх, худалдаж авах, эсвэл танилцуулга болгон ашиглах боломжтой.</p>
+                            </div>
+                            {/* Basic info */}
+                            <div className="bg-white rounded-2xl p-4 space-y-3">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Үндсэн мэдээлэл</p>
+                              {[
+                                { key: 'name', label: 'Нэр', placeholder: 'Жишээ: Жак' },
+                                { key: 'phone', label: 'Дугаар', placeholder: 'Жишээ: 9999 9999' },
+                                { key: 'storeName', label: 'Дэлгүүрийн Нэр', placeholder: 'Жишээ: Happy Bag Store' },
+                                { key: 'storeType', label: 'Дэлгүүрийн Төрөл', placeholder: 'Жишээ: Цүнх' },
+                              ].map(f => (
+                                <div key={f.key}>
+                                  <label className="text-slate-400 text-[10px] font-bold block mb-1">{f.label}</label>
+                                  <input type="text" value={(omSalesForm as any)[f.key]}
+                                    onChange={e => setOmSalesForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                    onClick={e => e.stopPropagation()}
+                                    placeholder={f.placeholder}
+                                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all" />
+                                </div>
+                              ))}
+                            </div>
+                            {/* Access type */}
+                            <div className="bg-white rounded-2xl p-4">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Хандалтын Төрөл</p>
+                              <div className="flex flex-col gap-2">
+                                {[
+                                  { val: 'rent', label: 'Түрээслэх', icon: '🔑', desc: 'Сар бүр төлбөр' },
+                                  { val: 'buy', label: 'Худалдаж Авах', icon: '🏪', desc: 'Нэг удаагийн төлбөр' },
+                                  { val: 'showcase', label: 'Танилцуулга Болгон Ашиглах', icon: '📋', desc: 'Social link байршуулах' },
+                                ].map(opt => (
+                                  <button key={opt.val} onClick={() => setOmSalesForm(prev => ({ ...prev, accessType: opt.val as any, itemTier: '' }))}
+                                    className={cn('flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all', omSalesForm.accessType === opt.val ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                    <span className="text-xl">{opt.icon}</span>
+                                    <div className="flex-1">
+                                      <p className={cn('font-black text-sm', omSalesForm.accessType === opt.val ? 'text-amber-700' : 'text-slate-700')}>{opt.label}</p>
+                                      <p className="text-slate-400 text-xs">{opt.desc}</p>
+                                    </div>
+                                    {omSalesForm.accessType === opt.val && <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center"><span className="text-white text-xs font-black">✓</span></div>}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Rent tiers */}
+                            {omSalesForm.accessType === 'rent' && (
+                              <div className="bg-white rounded-2xl p-4">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Түрээс</p>
+                                <div className="space-y-2">
+                                  {RENT_TIERS.map(t => (
+                                    <button key={t.tier} onClick={() => setOmSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                      className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all', omSalesForm.itemTier === t.tier ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                      <div className="flex items-center gap-3"><span className="text-xs">📦</span><span className={cn('font-black text-sm', omSalesForm.itemTier === t.tier ? 'text-amber-700' : 'text-slate-700')}>{t.label}</span></div>
+                                      <div className="text-right"><p className={cn('font-black text-sm', omSalesForm.itemTier === t.tier ? 'text-amber-600' : 'text-slate-900')}>{t.price}</p><p className="text-slate-400 text-[10px]">{t.sub}</p></div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* Buy tiers */}
+                            {omSalesForm.accessType === 'buy' && (
+                              <div className="bg-white rounded-2xl p-4">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Худалдан Авалт</p>
+                                <div className="space-y-2">
+                                  {BUY_TIERS.map(t => (
+                                    <button key={t.tier} onClick={() => setOmSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                      className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all', omSalesForm.itemTier === t.tier ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                      <div className="flex items-center gap-3"><span className="text-xs">🏪</span><span className={cn('font-black text-sm', omSalesForm.itemTier === t.tier ? 'text-amber-700' : 'text-slate-700')}>{t.label}</span></div>
+                                      <div className="text-right"><p className={cn('font-black text-sm', omSalesForm.itemTier === t.tier ? 'text-amber-600' : 'text-slate-900')}>{t.price}</p><p className="text-slate-400 text-[10px]">{t.sub}</p></div>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* Showcase */}
+                            {omSalesForm.accessType === 'showcase' && (
+                              <div className="bg-white rounded-2xl p-4 space-y-3">
+                                <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Social Links · 20,000₮ / Сарын тус бүр</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {SOCIAL_LINKS.map(s => {
+                                    const checked = omSalesForm.socialLinks[s.key as keyof typeof omSalesForm.socialLinks];
+                                    return (
+                                      <button key={s.key} onClick={() => setOmSalesForm(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [s.key]: !prev.socialLinks[s.key as keyof typeof prev.socialLinks] } }))}
+                                        className={cn('flex items-center gap-2 px-3 py-3 rounded-2xl border-2 transition-all', checked ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                        {s.icon}<span className={cn('font-black text-xs flex-1 text-left', checked ? 'text-amber-700' : 'text-slate-600')}>{s.label}</span>
+                                        {checked && <span className="text-amber-500 text-xs font-black">✓</span>}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                {selectedSocialCount > 0 && (
+                                  <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+                                    <span className="text-amber-700 text-xs font-bold">{selectedSocialCount} сонголт</span>
+                                    <span className="text-amber-700 font-black text-sm">{totalSocialPrice.toLocaleString()}₮/сар</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* Submit */}
+                            <button
+                              disabled={omSalesSubmitting || !omSalesForm.name.trim() || !omSalesForm.phone.trim() || !omSalesForm.accessType}
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setOmSalesSubmitting(true);
+                                try {
+                                  await addDoc(collection(db, 'other_mall_sales'), {
+                                    ...omSalesForm,
+                                    mallId: selectedOtherMall?.id,
+                                    mallName: selectedOtherMall?.name,
+                                    floor: omFloor,
+                                    roomNumber: omRoomNumber,
+                                    timestamp: serverTimestamp(),
+                                  });
+                                  setOmSalesDone(true);
+                                } catch {}
+                                setOmSalesSubmitting(false);
+                              }}
+                              className="w-full py-4 rounded-2xl font-black text-white text-base disabled:opacity-40"
+                              style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                              {omSalesSubmitting ? 'Илгээж байна...' : 'Хүсэлт Илгээх'}
+                            </button>
+                            <div className="h-6" />
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+
+                {/* ── Help modal ── */}
+                <AnimatePresence>
+                  {showOmHelp && (
+                    <motion.div key="om-help" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                      onClick={e => { e.stopPropagation(); setShowOmHelp(false); }}>
+                      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+                        className="bg-white rounded-3xl shadow-2xl w-80 overflow-hidden"
+                        onClick={e => e.stopPropagation()}>
+                        <div className="bg-emerald-600 px-5 py-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <HelpCircle size={18} className="text-white" />
+                            <p className="text-white font-black text-base">Зааварчилгаа</p>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setShowOmHelp(false); }}
+                            className="p-1.5 rounded-xl bg-white/20 text-white">
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="p-5 space-y-3">
+                          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Дэлгүүр дотор хэрхэн явах вэ?</p>
+                          {[
+                            { icon: '👇', gesture: 'Swipe Down', desc: 'Дээд давхар луу гарна' },
+                            { icon: '👆', gesture: 'Swipe Up', desc: 'Доод давхар луу гарна' },
+                            { icon: '👈', gesture: 'Swipe Left', desc: 'Дараагийн дэлгүүр / дараагийн бараа' },
+                            { icon: '👉', gesture: 'Swipe Right', desc: 'Өмнөх дэлгүүр / өмнөх бараа' },
+                            { icon: '👆👆', gesture: 'Double Tap', desc: 'Гарах, Орох сонголт гарна' },
+                          ].map(({ icon, gesture, desc }) => (
+                            <div key={gesture} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
+                              <span className="text-xl w-8 text-center shrink-0">{icon}</span>
+                              <div>
+                                <p className="font-black text-slate-900 text-sm leading-tight">{gesture}</p>
+                                <p className="text-slate-500 text-xs mt-0.5">{desc}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* ── Enter/Exit popup ── */}
+                <AnimatePresence>
+                  {showOmEnterExit && (() => {
+                    const pw = 200; const ph = 140;
+                    const vw = window.innerWidth; const vh = window.innerHeight;
+                    const left = Math.min(Math.max(omTapPos.x - pw / 2, 12), vw - pw - 12);
+                    const top = omTapPos.y + ph + 16 > vh ? omTapPos.y - ph - 16 : omTapPos.y + 16;
+                    return (
+                      <motion.div key="om-enterexit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-20" onClick={e => { e.stopPropagation(); setShowOmEnterExit(false); }}>
+                        <motion.div initial={{ scale: 0, opacity: 0.6 }} animate={{ scale: 3, opacity: 0 }} transition={{ duration: 0.4 }}
+                          className="absolute w-12 h-12 rounded-full bg-white/30 pointer-events-none"
+                          style={{ left: omTapPos.x - 24, top: omTapPos.y - 24 }} />
+                        <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.7, opacity: 0 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                          className="absolute bg-white rounded-3xl shadow-2xl p-4"
+                          style={{ left, top, width: pw }} onClick={e => e.stopPropagation()}>
+                          <div className="mb-3 pb-3 border-b border-slate-100">
+                            <p className="text-slate-400 text-[10px] font-black uppercase">#{omRoomNumber}</p>
+                            <p className="text-slate-900 font-black text-sm">{selectedOtherMall?.name}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setShowOmEnterExit(false); setOmMode('store'); omModeRef.current = 'store'; setOmInStorePage(0); }}
+                              className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                              style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>Орох</button>
+                            <button onClick={() => { setShowOmEnterExit(false); handleStoreRatingExit(selectedOtherMall?.name || '', omRoomNumber, 'other_mall', () => { setOmMode('floor'); }); }}
+                              className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm bg-slate-100">Гарах</button>
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    );
+                  })()}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+
+        {/* ===== CYBER MALL — FULL SCREEN ===== */}
+        <AnimatePresence>
+          {showCyberMall && (() => {
+            const floorData = MALL_DATA[mallFloor];
+            const currentStore = floorData?.stores[mallStoreIndex];
+            const roomNumber = `${mallFloor}${String(mallStoreIndex + 1).padStart(4, '0')}`;
+            const handleMallTouchStart = (e: React.TouchEvent) => {
+              e.stopPropagation();
+              mallSwipeStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            };
+            const handleMallTouchMove = (e: React.TouchEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+            };
+            const handleMallTouchEnd = (e: React.TouchEvent) => {
+              e.stopPropagation();
+              if (!mallSwipeStartRef.current) return;
+              const dx = e.changedTouches[0].clientX - mallSwipeStartRef.current.x;
+              const dy = e.changedTouches[0].clientY - mallSwipeStartRef.current.y;
+              mallSwipeStartRef.current = null;
+              if (mallMode === 'chat') return;
+              if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+                // vertical swipe: up → lower floor, down → higher floor
+                if (dy < -40) { // swipe up → доод давхар (floor - 1)
+                  const prev = Math.max(1, mallFloor - 1);
+                  setMallFloor(prev); setMallStoreIndex(0); setMallInStorePage(0); setMallMode('floor');
+                } else { // swipe down → дээд давхар (floor + 1)
+                  const next = Math.min(5, mallFloor + 1);
+                  setMallFloor(next); setMallStoreIndex(0); setMallInStorePage(0); setMallMode('floor');
+                }
+              } else if (Math.abs(dx) > 40) {
+                if (mallMode === 'floor') {
+                  // horizontal swipe — change store on floor
+                  if (dx < -40) { // swipe left (next)
+                    setMallStoreIndex(i => Math.min(floorData.stores.length - 1, i + 1));
+                  } else { // swipe right (back)
+                    setMallStoreIndex(i => Math.max(0, i - 1));
+                  }
+                } else if (mallMode === 'store') {
+                  // inside store — browse products
+                  const maxPage = currentStore ? currentStore.products.length : 0;
+                  if (dx < -40) {
+                    setMallInStorePage(p => Math.min(maxPage, p + 1));
+                  } else {
+                    setMallInStorePage(p => Math.max(0, p - 1));
+                  }
+                }
+              }
+            };
+            const handleMallTap = (e: React.MouseEvent) => {
+              const now = Date.now();
+              if (now - mallDoubleTapRef.current < 300) {
+                mallDoubleTapRef.current = 0;
+                if (mallMode !== 'chat') {
+                  setMallTapPos({ x: e.clientX, y: e.clientY });
+                  setShowMallEnterExit(true);
+                }
+              } else {
+                mallDoubleTapRef.current = now;
+              }
+            };
+            return (
+            <motion.div key="cybermall" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+              className="fixed inset-0 z-[200] flex flex-col overflow-hidden bg-slate-50 select-none"
+              style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+              onTouchStart={handleMallTouchStart}
+              onTouchMove={handleMallTouchMove}
+              onTouchEnd={handleMallTouchEnd}
+              onClick={handleMallTap}
+            >
+              {/* ── Header ── */}
+              <div className="relative z-10 shrink-0 bg-white border-b border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between px-5 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                      <ShoppingBag size={18} className="text-white" />
+                    </div>
+                    <div>
+                      <p className="text-slate-900 font-black text-base leading-tight">Cyber Mall</p>
+                      <p className="text-indigo-500 text-[10px] font-bold tracking-wider">
+                        {mallMode === 'chat' ? 'AI Туслагч' : mallMode === 'store' ? `Тоот ${roomNumber}` : `${mallFloor}F · ${floorData?.label}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={e => { e.stopPropagation(); setMallShowSales(true); setMallSalesDone(false); }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-black transition-all"
+                      style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)', color: 'white' }}>
+                      Sales
+                    </button>
+                    {mallMode !== 'chat' && (
+                      <button onClick={e => { e.stopPropagation(); setMallMode('chat'); }}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-bold transition-all">
+                        AI Chat
+                      </button>
+                    )}
+                    <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); }}
+                      className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+                {/* Floor indicator dots (only in floor/store mode) */}
+                {mallMode !== 'chat' && (
+                  <div className="flex items-center justify-center gap-1.5 pb-3">
+                    {[1,2,3,4,5].map(f => (
+                      <button key={f} onClick={e => { e.stopPropagation(); setMallFloor(f); setMallStoreIndex(0); setMallInStorePage(0); setMallMode('floor'); }}
+                        className={cn('rounded-full transition-all font-black text-[10px]',
+                          mallFloor === f ? 'w-6 h-2 bg-indigo-600' : 'w-2 h-2 bg-slate-200')} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── CHAT MODE ── */}
+              {mallMode === 'chat' && (
+                <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-slate-50">
+                  {/* Welcome banner */}
+                  <div className="shrink-0 mx-5 mt-5 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                    <div className="absolute inset-0 opacity-10 flex items-end justify-end pr-4 pb-2">
+                      <ShoppingBag size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-2">
+                        <motion.div animate={{ opacity: [1,0.4,1] }} transition={{ repeat: Infinity, duration: 2 }}
+                          className="w-2 h-2 rounded-full bg-white/70" />
+                        <span className="text-white/60 text-[10px] font-bold tracking-widest uppercase">Cyber Mall · AI Assistant</span>
+                      </div>
+                      <p className="text-white font-black text-xl leading-tight">Цахим</p>
+                      <p className="text-indigo-200 font-black text-xl leading-tight">Худалдааны Төв</p>
+                    </div>
+                  </div>
+
+                  {/* Chat area */}
+                  <div ref={mallChatRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                    {mallMessages.map((msg, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                        className={cn('flex gap-3', msg.role === 'user' ? 'flex-row-reverse' : 'flex-row')}>
+                        {msg.role === 'ai' && (
+                          <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-sm shadow-sm" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                            🤖
+                          </div>
+                        )}
+                        <div className={cn('max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm',
+                          msg.role === 'ai'
+                            ? 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm'
+                            : 'text-white rounded-tr-sm')}
+                          style={msg.role === 'user' ? { background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' } : {}}>
+                          {msg.text}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Input + Close Chat button */}
+                  <div className="shrink-0 px-5 pb-6 pt-3 border-t border-slate-100 bg-white">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={mallInput}
+                        onChange={e => setMallInput(e.target.value)}
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && mallInput.trim()) {
+                            const userText = mallInput.trim();
+                            setMallMessages(prev => [...prev, { role: 'user', text: userText }]);
+                            setMallInput('');
+                            setTimeout(() => {
+                              setMallMessages(prev => [...prev, {
+                                role: 'ai',
+                                text: `"${userText}" — гэсэн хэрэгцээтэй зүйлийг хайж байна... Таны хэрэгцээнд нийцсэн дэлгүүрт удахгүй аваачих болно. 🔍`,
+                              }]);
+                              mallChatRef.current?.scrollTo({ top: 99999, behavior: 'smooth' });
+                            }, 800);
+                          }
+                        }}
+                        placeholder="Юу хэрэгтэй байна вэ?..."
+                        className="flex-1 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 text-sm transition-all"
+                      />
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (!mallInput.trim()) return;
+                          const userText = mallInput.trim();
+                          setMallMessages(prev => [...prev, { role: 'user', text: userText }]);
+                          setMallInput('');
+                          setTimeout(() => {
+                            setMallMessages(prev => [...prev, {
+                              role: 'ai',
+                              text: `"${userText}" — гэсэн хэрэгцээтэй зүйлийг хайж байна... Таны хэрэгцээнд нийцсэн дэлгүүрт удахгүй аваачих болно. 🔍`,
+                            }]);
+                            mallChatRef.current?.scrollTo({ top: 99999, behavior: 'smooth' });
+                          }, 800);
+                        }}
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all shadow-sm"
+                        style={{ background: mallInput.trim() ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : '#f1f5f9', border: mallInput.trim() ? 'none' : '1px solid #e2e8f0' }}
+                      >
+                        <span className={mallInput.trim() ? 'text-white text-lg' : 'text-slate-400 text-lg'}>↑</span>
+                      </button>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); setMallMode('floor'); }}
+                      className="w-full mt-3 py-3 rounded-2xl font-black text-sm transition-all"
+                      style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: 'white' }}
+                    >
+                      Дэлгүүр лүү орох →
+                    </button>
+                    <p className="text-slate-400 text-[10px] text-center mt-2">Cyber Mall AI туслагч</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── FLOOR MODE — full-screen single storefront ── */}
+              {mallMode === 'floor' && currentStore && (
+                <AnimatePresence mode="wait">
+                  <motion.div key={`floor-${mallFloor}-${mallStoreIndex}`}
+                    initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    className="relative z-10 flex-1 flex flex-col overflow-hidden">
+                    {/* Storefront — top 60% */}
+                    <div className="flex-1 relative flex flex-col items-center justify-center overflow-hidden"
+                      style={{ background: currentStore.cover }}>
+                      {/* Ambient glow */}
+                      <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at 50% 40%, white 0%, transparent 70%)' }} />
+                      {/* Floor arrow hints */}
+                      {mallFloor > 1 && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-50">
+                          <div className="text-white text-xs font-bold">↑ {mallFloor - 1}F доод давхар</div>
+                        </div>
+                      )}
+                      {mallFloor < 5 && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-50">
+                          <div className="text-white text-xs font-bold">{mallFloor + 1}F дээд давхар ↓</div>
+                        </div>
+                      )}
+                      {/* Store icon */}
+                      <motion.div
+                        animate={{ scale: [1, 1.04, 1] }} transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                        className="relative z-10 text-8xl mb-4 drop-shadow-2xl">
+                        {currentStore.profile}
+                      </motion.div>
+                      {/* Room number plate */}
+                      <div className="relative z-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-6 py-3 text-center mb-3">
+                        <p className="text-white/60 text-[10px] font-black tracking-widest uppercase mb-0.5">Тоот · Room</p>
+                        <p className="text-white font-black text-4xl tracking-wider">{roomNumber}</p>
+                        {(() => { const r = storeRatings[`cyber_mall__${roomNumber}`]; return r ? <div className="mt-1 flex justify-center"><StoreRatingBadge avg={r.avg} count={r.count} size="xs" /></div> : null; })()}
+                      </div>
+                    </div>
+
+                    {/* Storefront info panel — bottom */}
+                    <div className="shrink-0 bg-white">
+                      {/* Store name plate */}
+                      <div className="px-6 pt-5 pb-3 border-b border-slate-100">
+                        <p className="text-slate-400 text-xs font-black tracking-widest uppercase mb-1">{currentStore.type}</p>
+                        <p className="text-slate-900 font-black text-2xl leading-tight">{currentStore.name}</p>
+                        <p className="text-slate-400 text-sm mt-1">{currentStore.desc}</p>
+                      </div>
+                      {/* Actions & store dots */}
+                      <div className="px-6 py-4 flex items-center justify-between">
+                        <div className="flex gap-1.5">
+                          {floorData?.stores.map((_, i) => (
+                            <button key={i} onClick={e => { e.stopPropagation(); setMallStoreIndex(i); }}
+                              className={cn('rounded-full transition-all', i === mallStoreIndex ? 'w-6 h-2 bg-indigo-500' : 'w-2 h-2 bg-slate-200')} />
+                          ))}
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setMallInStorePage(0); setMallMode('store'); }}
+                          className="px-5 py-2.5 rounded-xl font-black text-white text-sm"
+                          style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                          Орох →
+                        </button>
+                      </div>
+                      <div className="px-6 pb-5 flex items-center justify-between">
+                        <p className="text-slate-300 text-[10px]">← Swipe → дэлгүүр солих</p>
+                        <p className="text-slate-300 text-[10px]">↑↓ давхар солих</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+
+              {/* ── STORE MODE ── */}
+              {mallMode === 'store' && currentStore && (
+                <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-slate-50">
+                  {mallInStorePage === 0 ? (
+                      /* Store Intro */
+                      <div className="absolute inset-0 flex flex-col overflow-hidden bg-slate-50">
+                        {/* Cover */}
+                        <div className="shrink-0 h-44 relative flex items-center justify-center" style={{ background: currentStore.cover }}>
+                          <span className="text-8xl">{currentStore.profile}</span>
+                          <div className="absolute top-3 left-3 bg-black/30 rounded-xl px-2 py-1">
+                            <span className="text-white text-xs font-black">#{roomNumber}</span>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setMallMode('floor'); setMallInStorePage(0); }}
+                            className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm rounded-xl p-2 text-white">
+                            <X size={16} />
+                          </button>
+                        </div>
+                        {/* Store info */}
+                        <div className="shrink-0 bg-white px-5 pt-4 pb-4 border-b border-slate-100">
+                          <p className="text-slate-400 text-[10px] font-black tracking-widest uppercase mb-0.5">{currentStore.type}</p>
+                          <p className="text-slate-900 font-black text-2xl">{currentStore.name}</p>
+                          <p className="text-slate-500 text-sm mt-1 mb-2">{currentStore.desc}</p>
+                          {(() => { const r = storeRatings[`cyber_mall__${roomNumber}`]; return r ? <div className="mb-3"><StoreRatingBadge avg={r.avg} count={r.count} size="sm" /></div> : null; })()}
+                          {/* Social links — always show all 4 */}
+                          <div className="flex items-center gap-2">
+                            {/* Website */}
+                            {currentStore.website ? (
+                              <a href={currentStore.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex flex-col items-center gap-1 w-14">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                </div>
+                                <span className="text-slate-600 text-[9px] font-bold">Website</span>
+                              </a>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 w-14 opacity-25">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                                </div>
+                                <span className="text-slate-400 text-[9px] font-bold">Website</span>
+                              </div>
+                            )}
+                            {/* Facebook */}
+                            {currentStore.facebook ? (
+                              <a href={currentStore.facebook} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex flex-col items-center gap-1 w-14">
+                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: '#1877f2' }}>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                </div>
+                                <span className="text-[9px] font-bold" style={{ color: '#1877f2' }}>Facebook</span>
+                              </a>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 w-14 opacity-25">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#94a3b8"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                </div>
+                                <span className="text-slate-400 text-[9px] font-bold">Facebook</span>
+                              </div>
+                            )}
+                            {/* Instagram */}
+                            {currentStore.instagram ? (
+                              <a href={currentStore.instagram} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex flex-col items-center gap-1 w-14">
+                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)' }}>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                                </div>
+                                <span className="text-[9px] font-bold" style={{ color: '#dc2743' }}>Instagram</span>
+                              </a>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 w-14 opacity-25">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#94a3b8"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                                </div>
+                                <span className="text-slate-400 text-[9px] font-bold">Instagram</span>
+                              </div>
+                            )}
+                            {/* YouTube */}
+                            {currentStore.youtube ? (
+                              <a href={currentStore.youtube} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                                className="flex flex-col items-center gap-1 w-14">
+                                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: '#ff0000' }}>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                </div>
+                                <span className="text-[9px] font-bold" style={{ color: '#ff0000' }}>YouTube</span>
+                              </a>
+                            ) : (
+                              <div className="flex flex-col items-center gap-1 w-14 opacity-25">
+                                <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#94a3b8"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                                </div>
+                                <span className="text-slate-400 text-[9px] font-bold">YouTube</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {/* Products preview */}
+                        <div className="flex-1 overflow-y-auto p-5" style={{ overscrollBehavior: 'contain', touchAction: 'pan-y' }}>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-slate-400 text-xs font-bold tracking-wider uppercase">Бүтээгдэхүүн</p>
+                            <p className="text-slate-300 text-[10px]">Swipe ← харах</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {currentStore.products.map((p, i) => (
+                              <div key={i}
+                                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 cursor-pointer active:scale-95 transition-transform"
+                                onClick={e => { e.stopPropagation(); setMallInStorePage(i + 1); }}>
+                                <div className="text-2xl mb-2">🛍️</div>
+                                <p className="text-slate-900 font-bold text-sm leading-tight">{p}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Product detail */
+                      <div className="absolute inset-0 flex flex-col overflow-hidden bg-slate-50">
+                        <div className="shrink-0 h-56 relative flex items-center justify-center" style={{ background: currentStore.cover }}>
+                          <span className="text-7xl">🛍️</span>
+                          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/40">
+                            <p className="text-white font-black text-lg">{currentStore.products[mallInStorePage - 1]}</p>
+                            <p className="text-white/60 text-xs">{currentStore.name} · #{roomNumber}</p>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setMallInStorePage(0); }}
+                            className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm rounded-xl p-2 text-white">
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto bg-slate-50 p-5" style={{ touchAction: 'pan-y' }}>
+                          <p className="text-slate-900 font-black text-xl mb-2">{currentStore.products[mallInStorePage - 1]}</p>
+                          <p className="text-slate-500 text-sm">Энэ бүтээгдэхүүний тухай дэлгэрэнгүй мэдээлэл удахгүй нэмэгдэнэ.</p>
+                          <div className="mt-4 p-4 bg-white rounded-2xl shadow-sm border border-slate-100">
+                            <p className="text-slate-400 text-xs font-bold mb-2">Бүтээгдэхүүний мэдээлэл</p>
+                            <p className="text-slate-300 text-xs">Үнэ, тайлбар, зураг удахгүй...</p>
+                          </div>
+                        </div>
+                        {/* Product nav */}
+                        <div className="shrink-0 bg-white border-t border-slate-100 px-5 py-3 flex items-center justify-between">
+                          <button onClick={e => { e.stopPropagation(); setMallInStorePage(p => Math.max(0, p - 1)); }}
+                            className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-bold">← Өмнөх</button>
+                          <span className="text-slate-400 text-xs">{mallInStorePage}/{currentStore.products.length}</span>
+                          <button onClick={e => { e.stopPropagation(); setMallInStorePage(p => Math.min(currentStore.products.length, p + 1)); }}
+                            disabled={mallInStorePage >= currentStore.products.length}
+                            className="px-4 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-40"
+                            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>Дараах →</button>
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
+
+              {/* ── SALES OVERLAY — Борлуулалтын Алба ── */}
+              <AnimatePresence>
+                {mallShowSales && (() => {
+                  const RENT_TIERS = [
+                    { tier: '10', label: '10 Бараа', price: '100,000₮', sub: 'сарын' },
+                    { tier: '25', label: '25 Бараа', price: '250,000₮', sub: 'сарын' },
+                    { tier: '50', label: '50 Бараа', price: '500,000₮', sub: 'сарын' },
+                    { tier: '100', label: '100 Бараа', price: '1,000,000₮', sub: 'сарын' },
+                    { tier: '250', label: '250 Бараа', price: '2,500,000₮', sub: 'сарын' },
+                  ] as const;
+                  const BUY_TIERS = [
+                    { tier: '10', label: '10 Бараа', price: '2,000,000₮', sub: 'нэг удаа' },
+                    { tier: '25', label: '25 Бараа', price: '5,000,000₮', sub: 'нэг удаа' },
+                    { tier: '50', label: '50 Бараа', price: '9,000,000₮', sub: 'нэг удаа' },
+                    { tier: '100', label: '100 Бараа', price: '25,000,000₮', sub: 'нэг удаа' },
+                    { tier: '250', label: '250 Бараа', price: '50,000,000₮', sub: 'нэг удаа' },
+                  ] as const;
+                  const SOCIAL_LINKS = [
+                    { key: 'website', label: 'Website', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>, color: '#64748b' },
+                    { key: 'facebook', label: 'Facebook', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877f2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>, color: '#1877f2' },
+                    { key: 'youtube', label: 'YouTube', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="#ff0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>, color: '#ff0000' },
+                    { key: 'instagram', label: 'Instagram', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="url(#igs2)"><defs><linearGradient id="igs2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#dc2743"/><stop offset="100%" stopColor="#bc1888"/></linearGradient></defs><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>, color: '#dc2743' },
+                  ] as const;
+                  const selectedSocialCount = Object.values(mallSalesForm.socialLinks).filter(Boolean).length;
+                  const totalSocialPrice = selectedSocialCount * 20000;
+                  return (
+                    <motion.div key="mall-sales" initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 32 }}
+                      className="absolute inset-0 z-30 flex flex-col bg-slate-50 overflow-hidden"
+                      onClick={e => e.stopPropagation()}>
+                      {/* Sales header */}
+                      <div className="shrink-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                            <span className="text-lg">🏪</span>
+                          </div>
+                          <div>
+                            <p className="text-slate-900 font-black text-base leading-tight">Борлуулалтын Алба</p>
+                            <p className="text-amber-500 text-[10px] font-bold tracking-wider">Cyber Mall · Sales Office</p>
+                          </div>
+                        </div>
+                        <button onClick={() => setMallShowSales(false)}
+                          className="p-2 rounded-xl border border-slate-200 text-slate-400">
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {mallSalesDone ? (
+                        /* Success */
+                        <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+                          <div className="text-6xl">✅</div>
+                          <p className="text-slate-900 font-black text-xl">Хүсэлт илгээгдлээ!</p>
+                          <p className="text-slate-400 text-sm">Бид тантай удахгүй холбогдох болно.</p>
+                          <button onClick={() => { setMallShowSales(false); setMallSalesDone(false); setMallSalesForm({ name: '', phone: '', storeName: '', storeType: '', accessType: '', itemTier: '', socialLinks: { website: false, facebook: false, youtube: false, instagram: false } }); }}
+                            className="px-6 py-3 rounded-2xl font-black text-white text-sm mt-2"
+                            style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                            Буцах
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ touchAction: 'pan-y' }}>
+                          {/* Intro card */}
+                          <div className="rounded-2xl p-4 text-white" style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                            <p className="font-black text-base mb-1">Цахим Лангуу · Павилон</p>
+                            <p className="text-white/80 text-xs leading-relaxed">Манай Cyber Mall-д өөрийн дэлгүүрээ байрлуул. Түрээслэх, худалдаж авах, эсвэл танилцуулга болгон ашиглах боломжтой.</p>
+                          </div>
+
+                          {/* Basic info */}
+                          <div className="bg-white rounded-2xl p-4 space-y-3">
+                            <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Үндсэн мэдээлэл</p>
+                            {[
+                              { key: 'name', label: 'Нэр', placeholder: 'Жишээ: Жак' },
+                              { key: 'phone', label: 'Дугаар', placeholder: 'Жишээ: 9999 9999' },
+                              { key: 'storeName', label: 'Дэлгүүрийн Нэр', placeholder: 'Жишээ: Happy Bag Store' },
+                              { key: 'storeType', label: 'Дэлгүүрийн Төрөл', placeholder: 'Жишээ: Цүнх' },
+                            ].map(f => (
+                              <div key={f.key}>
+                                <label className="text-slate-400 text-[10px] font-bold block mb-1">{f.label}</label>
+                                <input
+                                  type="text"
+                                  value={(mallSalesForm as any)[f.key]}
+                                  onChange={e => setMallSalesForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                  onClick={e => e.stopPropagation()}
+                                  placeholder={f.placeholder}
+                                  className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100 transition-all"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Access type */}
+                          <div className="bg-white rounded-2xl p-4">
+                            <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Хандалтын Төрөл</p>
+                            <div className="flex flex-col gap-2">
+                              {[
+                                { val: 'rent', label: 'Түрээслэх', icon: '🔑', desc: 'Сар бүр төлбөр' },
+                                { val: 'buy', label: 'Худалдаж Авах', icon: '🏪', desc: 'Нэг удаагийн төлбөр' },
+                                { val: 'showcase', label: 'Танилцуулга Болгон Ашиглах', icon: '📋', desc: 'Social link байршуулах' },
+                              ].map(opt => (
+                                <button key={opt.val}
+                                  onClick={() => setMallSalesForm(prev => ({ ...prev, accessType: opt.val as any, itemTier: '' }))}
+                                  className={cn('flex items-center gap-3 px-4 py-3 rounded-2xl border-2 text-left transition-all',
+                                    mallSalesForm.accessType === opt.val
+                                      ? 'border-amber-400 bg-amber-50'
+                                      : 'border-slate-100 bg-slate-50')}>
+                                  <span className="text-xl">{opt.icon}</span>
+                                  <div className="flex-1">
+                                    <p className={cn('font-black text-sm', mallSalesForm.accessType === opt.val ? 'text-amber-700' : 'text-slate-700')}>{opt.label}</p>
+                                    <p className="text-slate-400 text-xs">{opt.desc}</p>
+                                  </div>
+                                  {mallSalesForm.accessType === opt.val && <div className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center"><span className="text-white text-xs font-black">✓</span></div>}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Rent tiers */}
+                          {mallSalesForm.accessType === 'rent' && (
+                            <div className="bg-white rounded-2xl p-4">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Түрээс</p>
+                              <div className="space-y-2">
+                                {RENT_TIERS.map(t => (
+                                  <button key={t.tier} onClick={() => setMallSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                    className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all',
+                                      mallSalesForm.itemTier === t.tier ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-slate-500 text-xs font-bold">📦</span>
+                                      <span className={cn('font-black text-sm', mallSalesForm.itemTier === t.tier ? 'text-amber-700' : 'text-slate-700')}>{t.label}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className={cn('font-black text-sm', mallSalesForm.itemTier === t.tier ? 'text-amber-600' : 'text-slate-900')}>{t.price}</p>
+                                      <p className="text-slate-400 text-[10px]">{t.sub}</p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Buy tiers */}
+                          {mallSalesForm.accessType === 'buy' && (
+                            <div className="bg-white rounded-2xl p-4">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase mb-3">Багц Сонгох · Худалдан Авалт</p>
+                              <div className="space-y-2">
+                                {BUY_TIERS.map(t => (
+                                  <button key={t.tier} onClick={() => setMallSalesForm(prev => ({ ...prev, itemTier: t.tier }))}
+                                    className={cn('w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all',
+                                      mallSalesForm.itemTier === t.tier ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-slate-500 text-xs font-bold">🏪</span>
+                                      <span className={cn('font-black text-sm', mallSalesForm.itemTier === t.tier ? 'text-amber-700' : 'text-slate-700')}>{t.label}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className={cn('font-black text-sm', mallSalesForm.itemTier === t.tier ? 'text-amber-600' : 'text-slate-900')}>{t.price}</p>
+                                      <p className="text-slate-400 text-[10px]">{t.sub}</p>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Showcase — social links + preview */}
+                          {mallSalesForm.accessType === 'showcase' && (
+                            <div className="bg-white rounded-2xl p-4 space-y-3">
+                              <p className="text-slate-500 text-xs font-black tracking-wider uppercase">Social Links · 20,000₮ / Сарын тус бүр</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {SOCIAL_LINKS.map(s => {
+                                  const checked = mallSalesForm.socialLinks[s.key as keyof typeof mallSalesForm.socialLinks];
+                                  return (
+                                    <button key={s.key}
+                                      onClick={() => setMallSalesForm(prev => ({ ...prev, socialLinks: { ...prev.socialLinks, [s.key]: !prev.socialLinks[s.key as keyof typeof prev.socialLinks] } }))}
+                                      className={cn('flex items-center gap-2 px-3 py-3 rounded-2xl border-2 transition-all',
+                                        checked ? 'border-amber-400 bg-amber-50' : 'border-slate-100 bg-slate-50')}>
+                                      {s.icon}
+                                      <span className={cn('font-black text-xs flex-1 text-left', checked ? 'text-amber-700' : 'text-slate-600')}>{s.label}</span>
+                                      {checked && <span className="text-amber-500 text-xs font-black">✓</span>}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {selectedSocialCount > 0 && (
+                                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-amber-50 border border-amber-200">
+                                  <span className="text-amber-700 text-xs font-bold">{selectedSocialCount} сонголт</span>
+                                  <span className="text-amber-700 font-black text-sm">{totalSocialPrice.toLocaleString()}₮/сар</span>
+                                </div>
+                              )}
+                              {/* Store preview */}
+                              <div className="mt-2 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                                <p className="text-slate-400 text-[10px] font-black tracking-wider uppercase px-3 pt-3 pb-2">Танилцуулгын Харагдах Байдал</p>
+                                <div className="h-20 flex items-center justify-center text-3xl" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                                  🏪
+                                </div>
+                                <div className="bg-white px-3 py-3">
+                                  <p className="text-slate-400 text-[9px] font-black uppercase mb-0.5">Дэлгүүрийн Төрөл</p>
+                                  <p className="text-slate-900 font-black text-sm">{mallSalesForm.storeName || 'Дэлгүүрийн Нэр'}</p>
+                                  <p className="text-slate-400 text-xs mb-2">{mallSalesForm.storeType || 'Дэлгүүрийн Төрөл'}</p>
+                                  <div className="flex gap-2">
+                                    {SOCIAL_LINKS.map(s => (
+                                      <div key={s.key} className={cn('w-8 h-8 rounded-xl flex items-center justify-center',
+                                        mallSalesForm.socialLinks[s.key as keyof typeof mallSalesForm.socialLinks]
+                                          ? 'bg-slate-100 opacity-100' : 'bg-slate-50 opacity-20')}>
+                                        {s.icon}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Submit */}
+                          <button
+                            onClick={async () => {
+                              if (!mallSalesForm.name || !mallSalesForm.phone || !mallSalesForm.storeName || !mallSalesForm.accessType) return;
+                              setMallSalesSubmitting(true);
+                              try {
+                                await addDoc(collection(db, 'mall_requests'), {
+                                  ...mallSalesForm,
+                                  timestamp: serverTimestamp(),
+                                });
+                                setMallSalesDone(true);
+                              } catch {}
+                              setMallSalesSubmitting(false);
+                            }}
+                            disabled={mallSalesSubmitting || !mallSalesForm.name || !mallSalesForm.phone || !mallSalesForm.storeName || !mallSalesForm.accessType || (mallSalesForm.accessType !== 'showcase' && !mallSalesForm.itemTier)}
+                            className="w-full py-4 rounded-2xl font-black text-white text-base transition-all disabled:opacity-40"
+                            style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                            {mallSalesSubmitting ? 'Илгээж байна...' : 'Хүсэлт Илгээх'}
+                          </button>
+                          <div className="h-4" />
+                        </div>
+                      )}
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+
+              {/* ── Орох/Гарах popup at tap position ── */}
+              <AnimatePresence>
+                {showMallEnterExit && (() => {
+                  // clamp so the popup (width ~200px, height ~160px) stays on screen
+                  const pw = 200; const ph = 160;
+                  const vw = window.innerWidth; const vh = window.innerHeight;
+                  const left = Math.min(Math.max(mallTapPos.x - pw / 2, 12), vw - pw - 12);
+                  const top = mallTapPos.y + ph + 16 > vh
+                    ? mallTapPos.y - ph - 16
+                    : mallTapPos.y + 16;
+                  return (
+                    <motion.div key="mall-enterexit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-20"
+                      onClick={e => { e.stopPropagation(); setShowMallEnterExit(false); }}>
+                      {/* tap ripple */}
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0.6 }} animate={{ scale: 3, opacity: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute w-12 h-12 rounded-full bg-white/40 pointer-events-none"
+                        style={{ left: mallTapPos.x - 24, top: mallTapPos.y - 24 }} />
+                      {/* popup card */}
+                      <motion.div
+                        initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        className="absolute bg-white rounded-3xl shadow-2xl p-4 overflow-hidden"
+                        style={{ left, top, width: pw }}
+                        onClick={e => e.stopPropagation()}>
+                        {/* store info */}
+                        {currentStore && (
+                          <div className="mb-3 pb-3 border-b border-slate-100">
+                            <p className="text-slate-500 text-[10px] font-black tracking-wider uppercase">#{roomNumber}</p>
+                            <p className="text-slate-900 font-black text-sm leading-tight">{currentStore.name}</p>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setShowMallEnterExit(false); setMallInStorePage(0); setMallMode('store'); }}
+                            className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                            Орох
+                          </button>
+                          <button
+                            onClick={() => { setShowMallEnterExit(false); handleStoreRatingExit(currentStore?.name || '', roomNumber, 'cyber_mall', () => { setMallMode('floor'); setMallInStorePage(0); }); }}
+                            className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm bg-slate-100">
+                            Гарах
+                          </button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+            </motion.div>
+          );})()}
+        </AnimatePresence>
+
+        {/* ===== STORE RENEW MODAL ===== */}
+        <AnimatePresence>
+          {showStoreRenew && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[600] flex items-end justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowStoreRenew(false)}>
+              <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="w-full max-w-lg bg-white rounded-t-[2rem] overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">#{storeActionMeta.roomNumber} · {storeActionMeta.mallName}</p>
+                    <p className="text-slate-900 font-black text-lg">🔄 Түрээс сунгах</p>
+                  </div>
+                  <button onClick={() => setShowStoreRenew(false)} className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500"><X size={16} /></button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                  {storeRenewDone ? (
+                    <div className="py-8 flex flex-col items-center gap-3 text-center">
+                      <div className="text-5xl">✅</div>
+                      <p className="text-slate-900 font-black text-xl">Хүсэлт илгээгдлээ!</p>
+                      <p className="text-slate-400 text-sm">Админ хянаад баталгаажуулна</p>
+                      <button onClick={() => setShowStoreRenew(false)} className="mt-2 px-8 py-3 rounded-2xl font-black text-white text-sm" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>Хаах</button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Сунгах хугацаа сонгоно уу</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[{ tier: '1m', label: '1 сар', price: '—' }, { tier: '3m', label: '3 сар', price: '—' }, { tier: '6m', label: '6 сар', price: '—' }, { tier: '12m', label: '1 жил', price: '—' }].map(opt => (
+                          <motion.button key={opt.tier} whileTap={{ scale: 0.97 }}
+                            onClick={() => setStoreRenewTier(opt.tier)}
+                            className={cn('py-4 rounded-2xl font-black text-sm border-2 transition-all', storeRenewTier === opt.tier ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-700')}>
+                            <p className="text-lg font-black">{opt.label}</p>
+                          </motion.button>
+                        ))}
+                      </div>
+                      <button disabled={!storeRenewTier || storeRenewSubmitting}
+                        onClick={submitStoreRenew}
+                        className="w-full py-4 rounded-2xl font-black text-white text-base transition-all disabled:opacity-40"
+                        style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>
+                        {storeRenewSubmitting ? 'Илгээж байна...' : 'Сунгах хүсэлт илгээх'}
+                      </button>
+                      <div className="h-2" />
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== STORE SELL MODAL ===== */}
+        <AnimatePresence>
+          {showStoreSell && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[600] flex items-end justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowStoreSell(false)}>
+              <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="w-full max-w-lg bg-white rounded-t-[2rem] overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}>
+                <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">#{storeActionMeta.roomNumber} · {storeActionMeta.mallName}</p>
+                    <p className="text-slate-900 font-black text-lg">💰 Лангуу зарах</p>
+                  </div>
+                  <button onClick={() => setShowStoreSell(false)} className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500"><X size={16} /></button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                  {storeSellDone ? (
+                    <div className="py-8 flex flex-col items-center gap-3 text-center">
+                      <div className="text-5xl">✅</div>
+                      <p className="text-slate-900 font-black text-xl">Хүсэлт илгээгдлээ!</p>
+                      <p className="text-slate-400 text-sm">Админ хянаад шилжүүлэлтийг баталгаажуулна</p>
+                      <button onClick={() => setShowStoreSell(false)} className="mt-2 px-8 py-3 rounded-2xl font-black text-white text-sm" style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>Хаах</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                        <p className="text-amber-800 text-sm font-bold">⚠️ Анхааруулга</p>
+                        <p className="text-amber-700 text-xs mt-1">Зарсны дараа тус лангуунд хандах эрх шинэ эзэмшигчид шилжинэ. Үйлдлийг админ баталгаажуулна.</p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Шинэ эзэмшигчийн нэр / утас</label>
+                        <input type="text" value={storeSellTarget} onChange={e => setStoreSellTarget(e.target.value)}
+                          placeholder="Username эсвэл утасны дугаар"
+                          className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all" />
+                      </div>
+                      <button disabled={!storeSellTarget.trim() || storeSellSubmitting}
+                        onClick={submitStoreSell}
+                        className="w-full py-4 rounded-2xl font-black text-white text-base transition-all disabled:opacity-40"
+                        style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)' }}>
+                        {storeSellSubmitting ? 'Илгээж байна...' : '💰 Зарах хүсэлт илгээх'}
+                      </button>
+                      <div className="h-2" />
+                    </>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== STORE PROFILE EDITOR ===== */}
+        <AnimatePresence>
+          {showStoreProfileEditor && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[600] flex items-end justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowStoreProfileEditor(false)}>
+              <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                className="w-full max-w-lg bg-white rounded-t-[2rem] overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">#{storeProfileEditorMeta.roomNumber} · {storeProfileEditorMeta.mallName}</p>
+                    <p className="text-slate-900 font-black text-lg">Дэлгүүр тохируулах</p>
+                  </div>
+                  <button onClick={() => setShowStoreProfileEditor(false)} className="w-9 h-9 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-500">
+                    <X size={16} />
+                  </button>
+                </div>
+                {/* Form */}
+                <div className="overflow-y-auto max-h-[70vh] px-6 py-5 space-y-4">
+                  {/* Exterior image */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Гадна талын зураг</label>
+                    {storeProfileForm.imageUrl ? (
+                      <div className="relative">
+                        <img src={storeProfileForm.imageUrl} alt="preview" className="w-full h-40 object-cover rounded-2xl border border-slate-200" />
+                        <button onClick={() => setStoreProfileForm(f => ({ ...f, imageUrl: '' }))}
+                          className="absolute top-2 right-2 w-8 h-8 rounded-xl bg-black/50 flex items-center justify-center text-white">
+                          <X size={14} />
+                        </button>
+                        <button onClick={() => storeImageInputRef.current?.click()}
+                          className="absolute bottom-2 right-2 px-3 py-1.5 rounded-xl bg-black/50 text-white text-xs font-black">
+                          🔄 Солих
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => storeImageInputRef.current?.click()} disabled={storeImageUploading}
+                        className="w-full h-32 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-2 bg-slate-50 active:bg-slate-100 transition-all disabled:opacity-50">
+                        {storeImageUploading ? (
+                          <>
+                            <div className="w-8 h-8 border-2 border-slate-400 border-t-blue-500 rounded-full animate-spin" />
+                            <p className="text-slate-400 text-xs font-bold">Оруулж байна...</p>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-3xl">📷</span>
+                            <p className="text-slate-500 text-sm font-black">Утаснаас зураг сонгох</p>
+                            <p className="text-slate-300 text-xs">JPG, PNG, WEBP</p>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <input ref={storeImageInputRef} type="file" accept="image/*" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleStoreImagePick(f); e.target.value = ''; }} />
+                  </div>
+                  {/* Store name */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Дэлгүүрийн нэр</label>
+                    <input type="text" value={storeProfileForm.storeName} onChange={e => setStoreProfileForm(f => ({ ...f, storeName: e.target.value }))}
+                      placeholder="Дэлгүүрийн нэр оруулна уу"
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+                  </div>
+                  {/* Description */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Танилцуулга</label>
+                    <textarea value={storeProfileForm.description} onChange={e => setStoreProfileForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Дэлгүүрийн товч танилцуулга..."
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all resize-none" />
+                  </div>
+                  {/* Website */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Website</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🌐</span>
+                      <input type="url" value={storeProfileForm.website} onChange={e => setStoreProfileForm(f => ({ ...f, website: e.target.value }))}
+                        placeholder="https://yoursite.com"
+                        className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+                    </div>
+                  </div>
+                  {/* Phone */}
+                  <div className="space-y-1.5">
+                    <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Утасны дугаар</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">📞</span>
+                      <input type="tel" value={storeProfileForm.phone} onChange={e => setStoreProfileForm(f => ({ ...f, phone: e.target.value }))}
+                        placeholder="9900 0000"
+                        className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
+                    </div>
+                  </div>
+                  {/* Social links */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-slate-700 text-xs font-black uppercase tracking-widest">Сошиал холбоос</label>
+                      <span className="text-slate-400 text-[10px] font-medium">нэг бүр 20,000₮</span>
+                    </div>
+                    {/* Facebook */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#1877f2' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-slate-700 text-sm font-bold">Facebook</span>
+                          <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                            <input type="checkbox" checked={storeProfileForm.socialPaid.facebook} onChange={e => setStoreProfileForm(f => ({ ...f, socialPaid: { ...f.socialPaid, facebook: e.target.checked } }))} className="w-4 h-4 accent-blue-500" />
+                            <span className="text-slate-400 text-xs">Төлсөн</span>
+                          </label>
+                        </div>
+                      </div>
+                      {storeProfileForm.socialPaid.facebook && (
+                        <input type="url" value={storeProfileForm.facebook} onChange={e => setStoreProfileForm(f => ({ ...f, facebook: e.target.value }))}
+                          placeholder="https://facebook.com/yourpage"
+                          className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-blue-400 transition-all" />
+                      )}
+                    </div>
+                    {/* YouTube */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#ff0000' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-slate-700 text-sm font-bold">YouTube</span>
+                          <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                            <input type="checkbox" checked={storeProfileForm.socialPaid.youtube} onChange={e => setStoreProfileForm(f => ({ ...f, socialPaid: { ...f.socialPaid, youtube: e.target.checked } }))} className="w-4 h-4 accent-red-500" />
+                            <span className="text-slate-400 text-xs">Төлсөн</span>
+                          </label>
+                        </div>
+                      </div>
+                      {storeProfileForm.socialPaid.youtube && (
+                        <input type="url" value={storeProfileForm.youtube} onChange={e => setStoreProfileForm(f => ({ ...f, youtube: e.target.value }))}
+                          placeholder="https://youtube.com/@yourchannel"
+                          className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-red-400 transition-all" />
+                      )}
+                    </div>
+                    {/* Instagram */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(45deg,#f09433,#dc2743,#bc1888)' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                        </div>
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-slate-700 text-sm font-bold">Instagram</span>
+                          <label className="flex items-center gap-1 ml-auto cursor-pointer">
+                            <input type="checkbox" checked={storeProfileForm.socialPaid.instagram} onChange={e => setStoreProfileForm(f => ({ ...f, socialPaid: { ...f.socialPaid, instagram: e.target.checked } }))} className="w-4 h-4 accent-pink-500" />
+                            <span className="text-slate-400 text-xs">Төлсөн</span>
+                          </label>
+                        </div>
+                      </div>
+                      {storeProfileForm.socialPaid.instagram && (
+                        <input type="url" value={storeProfileForm.instagram} onChange={e => setStoreProfileForm(f => ({ ...f, instagram: e.target.value }))}
+                          placeholder="https://instagram.com/yourprofile"
+                          className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-300 text-sm outline-none focus:border-pink-400 transition-all" />
+                      )}
+                    </div>
+                  </div>
+                  {/* Save button */}
+                  <button
+                    disabled={!storeProfileForm.storeName.trim() || storeProfileSubmitting}
+                    onClick={saveStoreProfile}
+                    className="w-full py-4 rounded-2xl font-black text-white text-base transition-all disabled:opacity-40"
+                    style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                    {storeProfileSubmitting ? 'Хадгалж байна...' : '💾 Хадгалах'}
+                  </button>
+                  <div className="h-4" />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ===== STORE RATING MODAL ===== */}
+        <AnimatePresence>
+          {showStoreRating && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60 backdrop-blur-sm px-6"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl overflow-hidden"
+              >
+                {/* Header */}
+                <div className="px-6 pt-7 pb-4 text-center border-b border-slate-100">
+                  <div className="text-4xl mb-2">🏪</div>
+                  <p className="text-slate-400 text-[11px] font-black uppercase tracking-widest">#{storeRatingMeta.roomNumber}</p>
+                  <p className="text-slate-900 font-black text-base leading-tight mt-0.5">{storeRatingMeta.mallName}</p>
+                  <p className="text-slate-500 text-sm mt-2 font-medium">Дэлгүүрт орсон тухайгаа үнэлнэ үү</p>
+                </div>
+                {/* Stars */}
+                <div className="px-6 py-6 flex flex-col items-center gap-5">
+                  <div className="flex gap-3">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        onMouseEnter={() => setStoreRatingHover(star)}
+                        onMouseLeave={() => setStoreRatingHover(0)}
+                        onClick={() => setStoreRatingValue(star)}
+                        className="transition-transform active:scale-110"
+                      >
+                        <span className={cn(
+                          'text-4xl transition-all duration-150',
+                          (storeRatingHover || storeRatingValue) >= star ? 'opacity-100' : 'opacity-25'
+                        )}>⭐</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-slate-500 text-sm font-medium min-h-[20px]">
+                    {storeRatingValue === 1 && 'Маш муу'}
+                    {storeRatingValue === 2 && 'Муу'}
+                    {storeRatingValue === 3 && 'Дунд зэрэг'}
+                    {storeRatingValue === 4 && 'Сайн'}
+                    {storeRatingValue === 5 && 'Маш сайн ⭐'}
+                  </p>
+                  {/* Buttons */}
+                  <div className="flex gap-3 w-full">
+                    <button
+                      onClick={() => { setShowStoreRating(false); storeRatingOnExit?.(); setStoreRatingOnExit(null); }}
+                      className="flex-1 py-3 rounded-2xl font-black text-slate-500 text-sm bg-slate-100"
+                    >Алгасах</button>
+                    <button
+                      disabled={storeRatingValue === 0 || storeRatingSubmitting}
+                      onClick={() => submitStoreRating(storeRatingValue)}
+                      className="flex-2 px-6 py-3 rounded-2xl font-black text-white text-sm transition-all disabled:opacity-40"
+                      style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)', flex: 2 }}
+                    >{storeRatingSubmitting ? 'Хадгалж байна...' : 'Үнэлэх'}</button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Battle Registration Modal */}
+        <AnimatePresence>
+          {showBattleRegister && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setShowBattleRegister(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 30 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 30 }}
+                className="bg-white rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-6 text-white relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e1b4b, #7c3aed, #dc2626)' }}>
+                  <div className="absolute inset-0 opacity-10 flex items-center justify-center"><Swords size={120} /></div>
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display font-black text-2xl">Бүртгүүлэх</h3>
+                      <p className="text-white/70 text-sm mt-1">Тулааны системд нэгдэх</p>
+                    </div>
+                    <button onClick={() => setShowBattleRegister(false)} className="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-all">
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Name */}
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Нэр</label>
+                    <input
+                      type="text"
+                      value={battleRegisterForm.name}
+                      onChange={e => setBattleRegisterForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Таны нэр"
+                      className="w-full mt-1.5 px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-400 outline-none text-sm font-medium"
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Дугаар</label>
+                    <input
+                      type="tel"
+                      value={battleRegisterForm.phone}
+                      onChange={e => setBattleRegisterForm(f => ({ ...f, phone: e.target.value }))}
+                      placeholder="8888-8888"
+                      className="w-full mt-1.5 px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-400 outline-none text-sm font-medium"
+                    />
+                  </div>
+
+                  {/* Hero Type */}
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Баатар Төрөл</label>
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      {/* Ranged */}
+                      <button
+                        onClick={() => setBattleRegisterForm(f => ({ ...f, heroType: 'ranged' }))}
+                        className={`rounded-2xl p-4 border-2 text-left transition-all ${battleRegisterForm.heroType === 'ranged' ? 'border-sky-500 bg-sky-50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                      >
+                        <div className="text-2xl mb-2">🏹</div>
+                        <p className={`font-black text-sm ${battleRegisterForm.heroType === 'ranged' ? 'text-sky-700' : 'text-slate-700'}`}>Холын</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Буудах · Харвах</p>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>✨ Амьд үлдэх</span><span className="font-bold text-sky-600">+20%</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>⚔️ Attack</span><span className="font-bold">1</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>🛡️ Armor</span><span className="font-bold">0</span>
+                          </div>
+                        </div>
+                        <div className={`mt-3 text-center py-1.5 rounded-xl text-xs font-black ${battleRegisterForm.heroType === 'ranged' ? 'bg-sky-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                          20,000₮
+                        </div>
+                      </button>
+
+                      {/* Melee */}
+                      <button
+                        onClick={() => setBattleRegisterForm(f => ({ ...f, heroType: 'melee' }))}
+                        className={`rounded-2xl p-4 border-2 text-left transition-all ${battleRegisterForm.heroType === 'melee' ? 'border-rose-500 bg-rose-50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                      >
+                        <div className="text-2xl mb-2">⚔️</div>
+                        <p className={`font-black text-sm ${battleRegisterForm.heroType === 'melee' ? 'text-rose-700' : 'text-slate-700'}`}>Ойрын</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Дайрах · Зодох</p>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>✨ Амьд үлдэх</span><span className="font-bold">0%</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>⚔️ Attack</span><span className="font-bold text-rose-600">3</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>🛡️ Armor</span><span className="font-bold text-rose-600">5</span>
+                          </div>
+                        </div>
+                        <div className={`mt-3 text-center py-1.5 rounded-xl text-xs font-black ${battleRegisterForm.heroType === 'melee' ? 'bg-rose-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                          10,000₮
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pay button */}
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    disabled={isSubmittingBattleReg || !battleRegisterForm.name.trim() || !battleRegisterForm.phone.trim()}
+                    onClick={async () => {
+                      if (!battleRegisterForm.name.trim() || !battleRegisterForm.phone.trim()) return;
+                      const amount = battleRegisterForm.heroType === 'ranged' ? 20000 : 10000;
+                      const isRanged = battleRegisterForm.heroType === 'ranged';
+                      setIsSubmittingBattleReg(true);
+                      try {
+                        const processBattleReg = async () => {
+                          const uid = auth.currentUser?.uid || battleRegisterForm.phone;
+                          const username = appUser?.username || battleRegisterForm.phone;
+                          // Check for referral in URL
+                          const urlRef = new URLSearchParams(window.location.search).get('ref');
+                          await setDoc(doc(db, 'battle_stats', uid), {
+                            uid,
+                            username,
+                            name: battleRegisterForm.name.trim(),
+                            phone: battleRegisterForm.phone.trim(),
+                            heroType: battleRegisterForm.heroType,
+                            hp: 100,
+                            armor: isRanged ? 0 : 5,
+                            attack: isRanged ? 1 : 3,
+                            survivalChance: isRanged ? 20 : 0,
+                            ...(urlRef ? { referredBy: urlRef } : {}),
+                          }, { merge: true });
+                          // Referral bonus
+                          if (urlRef) {
+                            const inviterDoc = battleUsers.find(u => u.username === urlRef);
+                            if (inviterDoc) {
+                              await setDoc(doc(db, 'battle_stats', inviterDoc.uid), { hp: increment(1) }, { merge: true });
+                              if (inviterDoc.referredBy) {
+                                const grandpaDoc = battleUsers.find(u => u.username === inviterDoc.referredBy);
+                                if (grandpaDoc) {
+                                  await setDoc(doc(db, 'battle_stats', grandpaDoc.uid), { armor: increment(1) }, { merge: true });
+                                }
+                              }
+                            }
+                          }
+                          setShowBattleRegister(false);
+                        };
+                        const response = await axios.post('/api/qpay/invoice', {
+                          amount,
+                          description: `Тулааны бүртгэл — ${isRanged ? 'Холын' : 'Ойрын'} баатар`,
+                        });
+                        setQpayInvoice({ ...response.data, amount });
+                        setOnPaymentSuccess(() => processBattleReg);
+                      } catch {
+                        alert('Төлбөрийн нэхэмжлэх үүсгэхэд алдаа гарлаа.');
+                      } finally {
+                        setIsSubmittingBattleReg(false);
+                      }
+                    }}
+                    className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-40 transition-all"
+                    style={{ background: battleRegisterForm.heroType === 'ranged' ? 'linear-gradient(135deg, #0ea5e9, #7c3aed)' : 'linear-gradient(135deg, #dc2626, #7c3aed)' }}
+                  >
+                    {isSubmittingBattleReg
+                      ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={16} />Уншиж байна...</span>
+                      : <span className="flex items-center justify-center gap-2">
+                          <CreditCard size={16} />
+                          Төлбөр Төлөх — {battleRegisterForm.heroType === 'ranged' ? '20,000₮' : '10,000₮'}
+                        </span>
+                    }
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
 
@@ -12068,6 +16938,63 @@ export default function App() {
                 {/* ASKIFY TAB */}
                 {adminDashTab === 'askify' && (
                   <div className="space-y-4">
+
+                    {/* Social Media Links config */}
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                      <div className="p-4 flex items-center gap-2" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
+                        <span className="text-white text-base">🔗</span>
+                        <p className="text-white text-xs font-bold uppercase tracking-widest">Social Media Links</p>
+                      </div>
+                      <div className="p-5 space-y-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <Facebook size={12} style={{ color: '#1877f2' }} /> Facebook
+                          </label>
+                          <input value={askifySocialForm.facebook}
+                            onChange={e => setAskifySocialForm(f => ({ ...f, facebook: e.target.value }))}
+                            placeholder="https://facebook.com/yourpage"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-400 outline-none text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <Youtube size={12} style={{ color: '#ff0000' }} /> YouTube
+                          </label>
+                          <input value={askifySocialForm.youtube}
+                            onChange={e => setAskifySocialForm(f => ({ ...f, youtube: e.target.value }))}
+                            placeholder="https://youtube.com/@yourchannel"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-400 outline-none text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                            <Instagram size={12} style={{ color: '#e1306c' }} /> Instagram
+                          </label>
+                          <input value={askifySocialForm.instagram}
+                            onChange={e => setAskifySocialForm(f => ({ ...f, instagram: e.target.value }))}
+                            placeholder="https://instagram.com/yourprofile"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-400 outline-none text-sm"
+                          />
+                        </div>
+                        <motion.button whileTap={{ scale: 0.97 }} disabled={isSavingSocialLinks}
+                          onClick={async () => {
+                            setIsSavingSocialLinks(true);
+                            try {
+                              const { setDoc, doc: firestoreDoc } = await import('firebase/firestore');
+                              await setDoc(firestoreDoc(db, 'askify_config', 'social'), {
+                                facebook: askifySocialForm.facebook.trim(),
+                                youtube: askifySocialForm.youtube.trim(),
+                                instagram: askifySocialForm.instagram.trim(),
+                              });
+                            } catch (e) { console.error(e); }
+                            setIsSavingSocialLinks(false);
+                          }}
+                          className="w-full py-3.5 rounded-2xl font-black text-white text-sm disabled:opacity-40"
+                          style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}
+                        >{isSavingSocialLinks ? 'Хадгалж байна...' : 'Хадгалах'}</motion.button>
+                      </div>
+                    </div>
+
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                       <div className="p-4 bg-violet-600 flex items-center gap-2">
                         <Trophy size={16} className="text-white" />
@@ -12442,6 +17369,86 @@ export default function App() {
                   >
                     <Check size={18} /> Хадгалах
                   </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Store Product Add Modal */}
+        <AnimatePresence>
+          {showAddProduct && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[310] flex items-end sm:items-center justify-center bg-slate-900/80 backdrop-blur-md"
+              onClick={() => setShowAddProduct(false)}
+            >
+              <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+                className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100">
+                  <h3 className="font-black text-slate-900 text-lg">🛒 Бараа нэмэх</h3>
+                  <button onClick={() => setShowAddProduct(false)} className="p-2 rounded-xl bg-slate-100 text-slate-500"><X size={16} /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Image picker */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Барааны зураг</label>
+                    <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer overflow-hidden relative bg-slate-50 hover:border-emerald-400 transition-colors">
+                      {productImageUploading ? (
+                        <div className="flex flex-col items-center gap-2"><div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /><span className="text-xs text-slate-400">Боловсруулж байна...</span></div>
+                      ) : storeProductForm.imageUrl ? (
+                        <img src={storeProductForm.imageUrl} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 text-slate-400"><span className="text-3xl">📷</span><span className="text-xs font-bold">Утаснаас зураг сонгох</span></div>
+                      )}
+                      <input ref={productImageInputRef} type="file" accept="image/*" className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleProductImagePick(f); e.target.value = ''; }} />
+                    </label>
+                    {storeProductForm.imageUrl && (
+                      <button onClick={() => setStoreProductForm(f => ({ ...f, imageUrl: '' }))} className="mt-2 text-xs text-rose-500 font-bold">✕ Зураг устгах</button>
+                    )}
+                  </div>
+                  {/* Name */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Барааны нэр</label>
+                    <input type="text" value={storeProductForm.name}
+                      onChange={e => setStoreProductForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Жишээ: Цамц, Гутал..."
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-400 text-sm font-medium" />
+                  </div>
+                  {/* Description */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Тайлбар (Description)</label>
+                    <textarea value={storeProductForm.description}
+                      onChange={e => setStoreProductForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Барааны дэлгэрэнгүй тайлбар..."
+                      rows={2}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-400 text-sm font-medium resize-none" />
+                  </div>
+                  {/* Price */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Үнэ (₮)</label>
+                    <input type="number" value={storeProductForm.price}
+                      onChange={e => setStoreProductForm(f => ({ ...f, price: e.target.value }))}
+                      placeholder="Жишээ: 25000"
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-400 text-sm font-medium" />
+                  </div>
+                  {/* Stock */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Үлдэгдэл (ширхэг)</label>
+                    <input type="number" value={storeProductForm.stock}
+                      onChange={e => setStoreProductForm(f => ({ ...f, stock: e.target.value }))}
+                      placeholder="Жишээ: 10"
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 outline-none focus:border-emerald-400 text-sm font-medium" />
+                  </div>
+                  <motion.button whileTap={{ scale: 0.97 }}
+                    onClick={submitAddProduct}
+                    disabled={productSubmitting || !storeProductForm.name.trim() || !storeProductForm.price}
+                    className="w-full py-4 rounded-2xl font-black text-white text-sm disabled:opacity-50"
+                    style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                    {productSubmitting ? 'Хадгалж байна...' : '✓ Бараа нэмэх'}
+                  </motion.button>
                 </div>
               </motion.div>
             </motion.div>

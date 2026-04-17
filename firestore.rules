@@ -330,5 +330,86 @@ service cloud.firestore {
       allow update: if true;
       allow delete: if true;
     }
+
+    match /other_malls/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /other_mall_floors/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /other_mall_sales/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /feature_support/{docId} {
+      allow read, write: if true;
+    }
+
+    match /askify_config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /service_centers/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /service_center_floors/{docId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    match /service_center_sales/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /store_ratings/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /store_profiles/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /store_access/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /store_renewals/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /store_transfers/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /store_products/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    match /store_orders/{docId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
   }
 }
