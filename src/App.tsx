@@ -386,8 +386,21 @@ const Sidebar = ({ isOpen, onClose, activeTab, setActiveTab, appUser, onLoginCli
               </button>
             </div>
 
+            {/* Танилцах */}
+            <div className="px-4 pt-4 pb-2">
+              <button
+                onClick={() => { setActiveTab('citizens'); onClose(); }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-black text-sm transition-all"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: 'white' }}
+              >
+                <span className="text-base">👋</span>
+                <span className="flex-1 text-left">Танилцах</span>
+                <span className="text-white/50 text-xs">›</span>
+              </button>
+            </div>
+
             {/* Menu */}
-            <div className="flex-grow overflow-y-auto p-4 space-y-1">
+            <div className="flex-grow overflow-y-auto p-4 pt-2 space-y-1">
               {[...menuItems].sort((a, b) => (counts?.[b.id] ?? 0) - (counts?.[a.id] ?? 0)).map((item) => {
                 const isActive = activeTab === item.id;
                 const count = counts?.[item.id];
@@ -14746,19 +14759,17 @@ export default function App() {
                   {/* Tabs */}
                   <div className="flex items-end gap-1">
                     {[
-                      { id: 'mall' as const, label: 'Г. Жавхлан', isSidebar: false },
-                      { id: 'mall' as const, label: 'Танилцах', isSidebar: true },
-                      { id: 'profile' as const, label: 'User Profile', isSidebar: false },
+                      { id: 'mall' as const, label: 'Г. Жавхлан' },
+                      { id: 'profile' as const, label: 'My Profile' },
                     ].map((tab, i) => (
                       <button key={i}
                         onClick={e => {
                           e.stopPropagation();
-                          if (tab.isSidebar) { setShowSidebar(true); }
-                          else { setCyberMallTab(tab.id); }
+                          setCyberMallTab(tab.id);
                         }}
                         className={cn(
                           'px-3 py-2 text-xs font-black rounded-t-xl transition-all border-b-2',
-                          !tab.isSidebar && cyberMallTab === tab.id
+                          cyberMallTab === tab.id
                             ? 'text-indigo-600 border-indigo-500 bg-indigo-50/60'
                             : 'text-slate-400 border-transparent hover:text-slate-600'
                         )}>
