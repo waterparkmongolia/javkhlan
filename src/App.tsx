@@ -1854,6 +1854,7 @@ export default function App() {
   // Cyber Mall state
   const [showCyberMall, setShowCyberMall] = useState(false);
   const [cyberMallTab, setCyberMallTab] = useState<'mall'|'profile'>('mall');
+  const [profileBotTab, setProfileBotTab] = useState<'apps'|'income'|'expense'>('apps');
   const [mallFloor, setMallFloor] = useState(1);
   const [mallMode, setMallMode] = useState<'chat' | 'floor' | 'store'>('chat');
   const [mallStoreIndex, setMallStoreIndex] = useState(0);
@@ -14768,27 +14769,37 @@ export default function App() {
               {/* ── PROFILE TAB ── */}
               {cyberMallTab === 'profile' && (
                 <div className="flex-1 flex flex-col overflow-hidden bg-[#0f0f1a]">
-                  <div className="relative h-36 shrink-0" style={{ background: 'linear-gradient(135deg,#1e1b4b,#4c1d95,#7c3aed)' }} />
-                  <div className="px-5 -mt-10 pb-4 flex items-end gap-4">
-                    <div className="w-20 h-20 rounded-2xl border-4 border-[#0f0f1a] bg-violet-700 flex items-center justify-center shrink-0">
-                      <span className="text-white font-black text-3xl">{appUser ? (appUser.name || appUser.username || '?')[0].toUpperCase() : '?'}</span>
+                  {/* Profile info */}
+                  <div className="shrink-0 px-6 pt-6 pb-5 flex flex-col items-center gap-3">
+                    <div className="w-24 h-24 rounded-full bg-violet-700 flex items-center justify-center shadow-xl ring-4 ring-violet-500/30">
+                      <span className="text-white font-black text-4xl">{appUser ? (appUser.name || appUser.username || '?')[0].toUpperCase() : '?'}</span>
                     </div>
-                    <div className="pb-1 flex-1 min-w-0">
-                      <p className="text-white font-black text-lg leading-tight truncate">{appUser ? appUser.name : 'Зочин'}</p>
-                      <p className="text-violet-400 text-sm font-bold truncate">@{appUser ? appUser.username : 'guest'}</p>
+                    <div className="text-center">
+                      <p className="text-white font-black text-xl leading-tight">{appUser ? (appUser.name || 'Зочин') : 'Зочин'}</p>
+                      <p className="text-violet-400 text-sm font-bold mt-0.5">@{appUser ? appUser.username : 'guest'}</p>
+                    </div>
+                    <div className="w-full flex border border-white/8 rounded-2xl mt-1 overflow-hidden">
+                      {[['0','Followers'],['0','Supports'],['0','Supported']].map(([n,l],i) => (
+                        <div key={l} className={`flex-1 flex flex-col items-center py-3 ${i < 2 ? 'border-r border-white/8' : ''}`}>
+                          <p className="text-white font-black text-lg leading-none">{n}</p>
+                          <p className="text-white/40 text-[10px] font-bold mt-1">{l}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex border-t border-b border-white/8 mx-5 mb-4">
-                    {[['0', 'Нийтлэл'], ['0', 'Дагагч'], ['0', 'Дагаж байгаа']].map(([n, l]) => (
-                      <div key={l} className="flex-1 flex flex-col items-center py-3">
-                        <p className="text-white font-black text-base">{n}</p>
-                        <p className="text-white/40 text-[10px] font-bold">{l}</p>
-                      </div>
+                  {/* Bot Nav */}
+                  <div className="shrink-0 flex border-b border-white/8">
+                    {([['apps','My Apps'],['income','Income'],['expense','Expense']] as const).map(([id,label]) => (
+                      <button key={id} onClick={e => { e.stopPropagation(); setProfileBotTab(id); }}
+                        className={`flex-1 py-3 text-xs font-black transition-all border-b-2 ${profileBotTab === id ? 'text-violet-400 border-violet-500' : 'text-white/30 border-transparent'}`}>
+                        {label}
+                      </button>
                     ))}
                   </div>
-                  <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
-                    <span className="text-4xl">📭</span>
-                    <p className="text-white text-sm font-bold">Нийтлэл байхгүй</p>
+                  {/* Tab content */}
+                  <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-30">
+                    <span className="text-4xl">{profileBotTab === 'apps' ? '📱' : profileBotTab === 'income' ? '💰' : '💸'}</span>
+                    <p className="text-white text-sm font-bold">{profileBotTab === 'apps' ? 'Апп байхгүй' : profileBotTab === 'income' ? 'Орлого байхгүй' : 'Зарлага байхгүй'}</p>
                   </div>
                 </div>
               )}
