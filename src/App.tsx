@@ -1814,6 +1814,7 @@ export default function App() {
   const [omStorePageDir, setOmStorePageDir] = useState(1);
   const [showOmEnterExit, setShowOmEnterExit] = useState(false);
   const [omTapPos, setOmTapPos] = useState({ x: 0, y: 0 });
+  const [showOmMallExit, setShowOmMallExit] = useState(false);
   const omDoubleTapRef = React.useRef(0);
   const omSwipeStartRef = React.useRef<{ x: number; y: number } | null>(null);
   const [omFloorInfo, setOmFloorInfo] = useState<Record<string, string>>({});
@@ -13881,6 +13882,7 @@ export default function App() {
               if (now - omDoubleTapRef.current < 300) {
                 omDoubleTapRef.current = 0;
                 if (otherMallView === 'navigate') { setOmTapPos({ x: e.clientX, y: e.clientY }); setShowOmEnterExit(true); }
+                else if (otherMallView === 'home') { setShowOmMallExit(true); }
               } else { omDoubleTapRef.current = now; }
             };
             return (
@@ -13917,7 +13919,7 @@ export default function App() {
                         <button onClick={e => { e.stopPropagation(); setOtherMallView('home'); setSelectedOtherMall(null); setOmFloor(1); setOmStoreIndex(0); setOmMode('floor'); }}
                           className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">← Буцах</button>
                       )}
-                      <button onClick={e => { e.stopPropagation(); setShowOtherMall(false); setOtherMallView('home'); setSelectedOtherMall(null); }}
+                      <button onClick={e => { e.stopPropagation(); setShowOtherMall(false); setOtherMallView('home'); setSelectedOtherMall(null); setShowPageSelector(true); }}
                         className="p-2 rounded-xl border border-slate-200 text-slate-400">
                         <X size={16} />
                       </button>
@@ -14622,6 +14624,40 @@ export default function App() {
                       </motion.div>
                     );
                   })()}
+                </AnimatePresence>
+
+                {/* ── Mall-level exit confirmation (double-tap in home) ── */}
+                <AnimatePresence>
+                  {showOmMallExit && (
+                    <motion.div key="om-mallexit"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-30 bg-black/50 flex items-center justify-center"
+                      onClick={e => { e.stopPropagation(); setShowOmMallExit(false); }}>
+                      <motion.div
+                        initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                        className="bg-white rounded-3xl shadow-2xl p-5 mx-6 w-full max-w-xs"
+                        onClick={e => e.stopPropagation()}>
+                        <div className="mb-4">
+                          <p className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Бусад Худалдааны Төв</p>
+                          <p className="text-slate-900 font-black text-base mt-0.5">Гарах уу?</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => { setShowOmMallExit(false); setShowOtherMall(false); setOtherMallView('home'); setSelectedOtherMall(null); setShowPageSelector(true); }}
+                            className="flex-1 py-3 rounded-2xl font-black text-white text-sm"
+                            style={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+                            Гарах
+                          </button>
+                          <button
+                            onClick={() => setShowOmMallExit(false)}
+                            className="flex-1 py-3 rounded-2xl font-black text-slate-600 text-sm bg-slate-100">
+                            Үлдэх
+                          </button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
               </motion.div>
             );
