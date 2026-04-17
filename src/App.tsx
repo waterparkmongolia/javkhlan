@@ -5480,83 +5480,99 @@ export default function App() {
         {showSplash && <SplashScreen />}
       </AnimatePresence>
 
-      {/* ── PAGE SELECTOR ── */}
+      {/* ── PAGE SELECTOR (iPhone style) ── */}
       <AnimatePresence>
         {showPageSelector && !showSplash && (
           <motion.div key="pageselector"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[500] flex flex-col overflow-hidden bg-black">
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-[500] flex flex-col overflow-hidden select-none"
+            style={{ background: 'linear-gradient(160deg,#0a0a1a 0%,#0d1117 40%,#0a0f1e 100%)' }}>
 
-            {/* ── Top: Г. Жавхлан banner (flex-1, fills remaining space) ── */}
-            <motion.button
-              initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 28 }}
-              className="relative w-full flex-1 flex items-center justify-center overflow-hidden border-b border-white/5"
-              style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
-              onClick={() => setShowGJPaywall(true)}>
-              <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, #f59e0b18 0%, transparent 70%)' }} />
-              <div className="relative z-10 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-amber-400/30 flex items-center justify-center text-2xl shadow-xl">
-                  👨‍💼
-                </div>
-                <div className="text-left">
-                  <p className="text-amber-400/60 text-[9px] font-black tracking-widest uppercase mb-0.5">Personal Page</p>
-                  <p className="text-white font-black text-xl leading-none">Г. Жавхлан</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="text-amber-400 text-[9px] font-black">🔒 Төлбөртэй</span>
-                  </div>
-                </div>
-              </div>
-              <div className="absolute right-5 text-white/15 text-xl">›</div>
-            </motion.button>
-
-            {/* ── 3×4 grid (12 items, aspect-square cells) ── */}
-            <div className="grid grid-cols-3 shrink-0">
-              {([
-                { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
-                { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
-                { delay: 0.12, icon: '🛎️', sub: 'Service Center', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#2d1657,#4c1d95)', glow: '#a855f720', onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
-                { delay: 0.15, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.18, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.21, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.24, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.27, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.30, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.33, icon: '📱', sub: 'AppStore',   label: 'AppStore',   bg: 'linear-gradient(135deg,#001a1a,#0f4c81)', glow: '#0ea5e920', onClick: () => { setShowPageSelector(false); setShowAppStore(true); } },
-                { delay: 0.36, icon: '☰',  sub: 'Menu',       label: 'My Menu',    bg: 'linear-gradient(135deg,#0a0a1a,#1e1e3f)', glow: '#818cf820', onClick: () => { setShowPageSelector(false); setShowMyMenu(true); } },
-                { delay: 0.39, icon: '👤', sub: 'Profile',    label: 'My Profile', bg: 'linear-gradient(135deg,#1a0a2e,#4c1d95)', glow: '#a78bfa20', onClick: () => { setShowPageSelector(false); setCyberMallTab('profile'); setTimeout(() => setShowCyberMall(true), 200); } },
-              ]).map((item, i) => (
-                <motion.button key={i}
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: item.delay, type: 'spring', stiffness: 280, damping: 28 }}
-                  className={cn('relative aspect-square flex flex-col items-center justify-center overflow-hidden border-white/5',
-                    i % 3 !== 2 ? 'border-r' : '', i < 9 ? 'border-b' : '')}
-                  style={{ background: item.bg }}
-                  onClick={item.onClick}>
-                  <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 40%, ${item.glow} 0%, transparent 65%)` }} />
-                  <div className="relative z-10 flex flex-col items-center gap-1">
-                    <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center text-lg mb-0.5', item.sub === 'Soon' ? 'bg-white/5 border border-white/8' : 'bg-white/10 border border-white/20')}>{item.icon}</div>
-                    <p className={cn('text-[8px] font-black tracking-widest uppercase', item.sub === 'Soon' ? 'text-white/20' : 'text-white/40')}>{item.sub}</p>
-                    <p className={cn('font-black text-xs leading-tight text-center whitespace-pre-line', item.sub === 'Soon' ? 'text-white/25' : 'text-white')}>{item.label}</p>
-                  </div>
-                </motion.button>
-              ))}
+            {/* Wallpaper glow blobs */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <div className="absolute top-[10%] left-[20%] w-64 h-64 rounded-full opacity-20" style={{ background: 'radial-gradient(circle,#6366f1,transparent 70%)' }} />
+              <div className="absolute top-[30%] right-[10%] w-48 h-48 rounded-full opacity-15" style={{ background: 'radial-gradient(circle,#8b5cf6,transparent 70%)' }} />
+              <div className="absolute bottom-[25%] left-[5%] w-56 h-56 rounded-full opacity-10" style={{ background: 'radial-gradient(circle,#22d3ee,transparent 70%)' }} />
             </div>
 
-            {/* ── Г. Жавхлан paywall sheet ── */}
+            {/* Top Nav */}
+            <div className="relative z-10 shrink-0 flex items-center justify-center pt-14 pb-4">
+              <p className="text-white font-black text-xl tracking-tight">Г. Жавхлан</p>
+            </div>
+
+            {/* 3x3 App Grid */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center px-6">
+              <div className="grid grid-cols-3 gap-y-8 gap-x-4">
+                {([
+                  { icon: '🏬', label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#4f46e5,#7c3aed)', delay: 0.05, onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
+                  { icon: '🏪', label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#059669,#10b981)', delay: 0.08, onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
+                  { icon: '🛎️', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', delay: 0.11, onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.14, onClick: () => {} },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.17, onClick: () => {} },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.20, onClick: () => {} },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.23, onClick: () => {} },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.26, onClick: () => {} },
+                  { icon: '🕐', label: 'Удахгүй', bg: 'linear-gradient(135deg,#1e293b,#334155)', delay: 0.29, onClick: () => {} },
+                ] as { icon: string; label: string; bg: string; delay: number; onClick: () => void }[]).map((app, i) => (
+                  <motion.button key={i}
+                    initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: app.delay, type: 'spring', stiffness: 300, damping: 24 }}
+                    whileTap={{ scale: 0.88 }}
+                    onClick={app.onClick}
+                    className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-[22px] flex items-center justify-center text-3xl shadow-lg shadow-black/40"
+                      style={{ background: app.bg }}>
+                      {app.icon}
+                    </div>
+                    <p className="text-white text-[11px] font-semibold leading-tight text-center whitespace-pre-line"
+                      style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                      {app.label}
+                    </p>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom Dock */}
+            <div className="relative z-10 shrink-0 px-6 pb-10">
+              <div className="h-px bg-white/10 mb-5 mx-2" />
+              <div className="flex items-end justify-around">
+                {([
+                  { icon: '📱', label: 'AppStore',   bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', delay: 0.32, onClick: () => { setShowPageSelector(false); setShowAppStore(true); } },
+                  { icon: '☰',  label: 'My Menu',    bg: 'linear-gradient(135deg,#1d4ed8,#6366f1)', delay: 0.35, onClick: () => { setShowPageSelector(false); setShowMyMenu(true); } },
+                  { icon: '👤', label: 'My Profile', bg: 'linear-gradient(135deg,#6d28d9,#a855f7)', delay: 0.38, onClick: () => { setShowPageSelector(false); setCyberMallTab('profile'); setTimeout(() => setShowCyberMall(true), 200); } },
+                ] as { icon: string; label: string; bg: string; delay: number; onClick: () => void }[]).map((item, i) => (
+                  <motion.button key={i}
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: item.delay, type: 'spring', stiffness: 300, damping: 24 }}
+                    whileTap={{ scale: 0.88 }}
+                    onClick={item.onClick}
+                    className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-[22px] flex items-center justify-center text-3xl shadow-lg shadow-black/40"
+                      style={{ background: item.bg }}>
+                      {item.icon}
+                    </div>
+                    <p className="text-white text-[11px] font-semibold" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                      {item.label}
+                    </p>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+
+            {/* Г. Жавхлан paywall sheet */}
             <AnimatePresence>
               {showGJPaywall && (
-                <motion.div
-                  key="gjpaywall"
+                <motion.div key="gjpaywall"
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   className="absolute inset-0 bg-black/60 flex items-end z-10"
-                  onClick={() => setShowGJPaywall(false)}
-                >
+                  onClick={() => setShowGJPaywall(false)}>
                   <motion.div
                     initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
                     transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                     className="w-full bg-[#0f172a] rounded-t-3xl px-6 pt-6 pb-10"
-                    onClick={e => e.stopPropagation()}
-                  >
+                    onClick={e => e.stopPropagation()}>
                     <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-5" />
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-12 h-12 rounded-2xl bg-white/10 border border-amber-400/30 flex items-center justify-center text-2xl">👨‍💼</div>
@@ -5569,12 +5585,10 @@ export default function App() {
                       <p className="text-amber-300 font-black text-sm">🔒 20,000₮ төлж байж нэвтэрнэ</p>
                       <p className="text-white/50 text-xs mt-1">Энэ хуудас зөвхөн дэмжигчдэд нээлттэй</p>
                     </div>
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      className="w-full py-4 rounded-2xl font-black text-base text-white"
-                      style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }}
-                      onClick={() => { setShowGJPaywall(false); setShowPageSelector(false); setActiveTab('support'); }}
-                    >
+                    <motion.button whileTap={{ scale: 0.97 }}
+                      className="w-full py-4 rounded-2xl font-black text-white text-base"
+                      style={{ background: 'linear-gradient(135deg,#7c3aed,#6366f1)' }}
+                      onClick={() => { setShowGJPaywall(false); setActiveTab('citizens'); }}>
                       💜 Дэмжих
                     </motion.button>
                     <button className="w-full py-3 text-white/40 text-sm font-bold mt-2" onClick={() => setShowGJPaywall(false)}>
