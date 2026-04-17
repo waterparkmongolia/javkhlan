@@ -1704,6 +1704,8 @@ export default function App() {
       return next;
     });
   };
+  const [installConfirmApp, setInstallConfirmApp] = useState<{id: string; label: string; bg: string; Icon: any} | null>(null);
+  const [directLaunchTab, setDirectLaunchTab] = useState<AppTab | null>(null);
   const [showZarlaga, setShowZarlaga] = useState(false);
   const [showCyberCity, setShowCyberCity] = useState(false);
   const [cyberRegistrations, setCyberRegistrations] = useState<any[]>([]);
@@ -5688,7 +5690,10 @@ export default function App() {
                     </motion.button>
                     <p className="text-slate-700 text-[10px] font-semibold text-center leading-tight">{app.label}</p>
                     <button
-                      onClick={() => toggleInstallApp(app.id)}
+                      onClick={() => {
+                        if (installedApps.includes(app.id)) { toggleInstallApp(app.id); }
+                        else { setInstallConfirmApp(app); }
+                      }}
                       className={cn('px-2.5 py-0.5 rounded-full text-[9px] font-black transition-all',
                         installedApps.includes(app.id)
                           ? 'bg-sky-100 text-sky-600'
@@ -5699,6 +5704,45 @@ export default function App() {
                 ))}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Install Confirmation ── */}
+      <AnimatePresence>
+        {installConfirmApp && (
+          <motion.div key="installconfirm"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[600] bg-black/50 flex items-end"
+            onClick={() => setInstallConfirmApp(null)}>
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="w-full bg-white rounded-t-3xl px-6 pt-5 pb-10 shadow-2xl"
+              onClick={e => e.stopPropagation()}>
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md"
+                  style={{ background: installConfirmApp.bg }}>
+                  <installConfirmApp.Icon size={28} className="text-white" />
+                </div>
+                <div>
+                  <p className="text-slate-900 font-black text-base">{installConfirmApp.label}</p>
+                  <p className="text-slate-400 text-xs mt-0.5">Та суулгах уу?</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setInstallConfirmApp(null)}
+                  className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-500 font-black text-sm">
+                  Болих
+                </button>
+                <button onClick={() => { toggleInstallApp(installConfirmApp.id); setInstallConfirmApp(null); }}
+                  className="flex-1 py-3 rounded-2xl text-white font-black text-sm"
+                  style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>
+                  Суулгах
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -5793,6 +5837,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="h-screen flex flex-col overflow-hidden bg-slate-50">
+      {!directLaunchTab && (
       <Navbar
         onBrandClick={() => setActiveTab('home')}
         onBrandDoubleClick={() => setShowQuickMenu(true)}
@@ -5800,6 +5845,15 @@ export default function App() {
         onMenuClick={() => setShowSidebar(true)}
         onGarakhClick={() => setShowPageSelector(true)}
       />
+      )}
+      {directLaunchTab && (
+        <div className="shrink-0 flex items-center px-4 py-3 bg-white border-b border-slate-100 shadow-sm">
+          <button onClick={() => { setDirectLaunchTab(null); setShowPageSelector(true); }}
+            className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black">
+            ‹ Үндсэн Хуудас
+          </button>
+        </div>
+      )}
 
       {/* ── Жавхлантай бол Жаргалтай ── home only */}
       {activeTab === 'home' && (
@@ -14885,7 +14939,7 @@ export default function App() {
                           ].filter(a => installedApps.includes(a.id)).map(app => (
                             <motion.button key={app.id}
                               whileTap={{ scale: 0.88 }}
-                              onClick={e => { e.stopPropagation(); setShowCyberMall(false); setShowPageSelector(false); setActiveTab(app.id as AppTab); if (app.id === 'shop') { setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } }}
+                              onClick={e => { e.stopPropagation(); const t = app.id as AppTab; setActiveTab(t); setShowCyberMall(false); setShowPageSelector(false); setDirectLaunchTab(t); }}
                               className="flex flex-col items-center gap-1.5">
                               <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md"
                                 style={{ background: app.bg }}>
