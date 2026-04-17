@@ -1853,6 +1853,7 @@ export default function App() {
 
   // Cyber Mall state
   const [showCyberMall, setShowCyberMall] = useState(false);
+  const [cyberMallTab, setCyberMallTab] = useState<'mall'|'profile'>('mall');
   const [mallFloor, setMallFloor] = useState(1);
   const [mallMode, setMallMode] = useState<'chat' | 'floor' | 'store'>('chat');
   const [mallStoreIndex, setMallStoreIndex] = useState(0);
@@ -14739,41 +14740,41 @@ export default function App() {
               onTouchEnd={handleMallTouchEnd}
               onClick={handleMallTap}
             >
-              {/* ── Header ── */}
+              {/* ── Top Navigation ── */}
               <div className="relative z-10 shrink-0 bg-white border-b border-slate-100 shadow-sm">
-                <div className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-                      <ShoppingBag size={18} className="text-white" />
-                    </div>
-                    <div>
-                      <p className="text-slate-900 font-black text-base leading-tight">Cyber Mall</p>
-                      <p className="text-indigo-500 text-[10px] font-bold tracking-wider">
-                        {mallMode === 'chat' ? 'AI Туслагч' : mallMode === 'store' ? `Тоот ${roomNumber}` : `${mallFloor}F · ${floorData?.label}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={e => { e.stopPropagation(); setMallShowSales(true); setMallSalesDone(false); }}
-                      className="px-3 py-1.5 rounded-xl text-xs font-black transition-all"
-                      style={{ background: 'linear-gradient(135deg,#f59e0b,#ef4444)', color: 'white' }}>
-                      Sales
-                    </button>
-                    {mallMode !== 'chat' && (
-                      <button onClick={e => { e.stopPropagation(); setMallMode('chat'); }}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs font-bold transition-all">
-                        AI Chat
+                <div className="flex items-center justify-between px-4 pt-3 pb-0">
+                  {/* Tabs */}
+                  <div className="flex items-end gap-1">
+                    {([
+                      { id: 'mall', label: 'Г. Жавхлан' },
+                      { id: 'sidebar', label: 'Танилцах' },
+                      { id: 'profile', label: 'User Profile' },
+                    ] as const).map(tab => (
+                      <button key={tab.id}
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (tab.id === 'sidebar') { setShowSidebar(true); }
+                          else { setCyberMallTab(tab.id); }
+                        }}
+                        className={cn(
+                          'px-3 py-2 text-xs font-black rounded-t-xl transition-all border-b-2',
+                          (tab.id !== 'sidebar' && cyberMallTab === tab.id)
+                            ? 'text-indigo-600 border-indigo-500 bg-indigo-50/60'
+                            : 'text-slate-400 border-transparent hover:text-slate-600'
+                        )}>
+                        {tab.label}
                       </button>
-                    )}
-                    <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); }}
-                      className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all">
-                      <X size={16} />
-                    </button>
+                    ))}
                   </div>
+                  {/* Right: Гарах */}
+                  <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setCyberMallTab('mall'); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); setShowPageSelector(true); }}
+                    className="px-3 py-1.5 mb-1 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
+                    Гарах
+                  </button>
                 </div>
-                {/* Floor indicator dots (only in floor/store mode) */}
-                {mallMode !== 'chat' && (
-                  <div className="flex items-center justify-center gap-1.5 pb-3">
+                {/* Floor indicator dots (only in floor/store mode when mall tab active) */}
+                {cyberMallTab === 'mall' && mallMode !== 'chat' && (
+                  <div className="flex items-center justify-center gap-1.5 py-2">
                     {[1,2,3,4,5].map(f => (
                       <button key={f} onClick={e => { e.stopPropagation(); setMallFloor(f); setMallStoreIndex(0); setMallInStorePage(0); setMallMode('floor'); }}
                         className={cn('rounded-full transition-all font-black text-[10px]',
@@ -14783,8 +14784,36 @@ export default function App() {
                 )}
               </div>
 
+              {/* ── PROFILE TAB ── */}
+              {cyberMallTab === 'profile' && (
+                <div className="flex-1 flex flex-col overflow-hidden bg-[#0f0f1a]">
+                  <div className="relative h-36 shrink-0" style={{ background: 'linear-gradient(135deg,#1e1b4b,#4c1d95,#7c3aed)' }} />
+                  <div className="px-5 -mt-10 pb-4 flex items-end gap-4">
+                    <div className="w-20 h-20 rounded-2xl border-4 border-[#0f0f1a] bg-violet-700 flex items-center justify-center shrink-0">
+                      <span className="text-white font-black text-3xl">{appUser ? (appUser.name || appUser.username || '?')[0].toUpperCase() : '?'}</span>
+                    </div>
+                    <div className="pb-1 flex-1 min-w-0">
+                      <p className="text-white font-black text-lg leading-tight truncate">{appUser ? appUser.name : 'Зочин'}</p>
+                      <p className="text-violet-400 text-sm font-bold truncate">@{appUser ? appUser.username : 'guest'}</p>
+                    </div>
+                  </div>
+                  <div className="flex border-t border-b border-white/8 mx-5 mb-4">
+                    {[['0', 'Нийтлэл'], ['0', 'Дагагч'], ['0', 'Дагаж байгаа']].map(([n, l]) => (
+                      <div key={l} className="flex-1 flex flex-col items-center py-3">
+                        <p className="text-white font-black text-base">{n}</p>
+                        <p className="text-white/40 text-[10px] font-bold">{l}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-40">
+                    <span className="text-4xl">📭</span>
+                    <p className="text-white text-sm font-bold">Нийтлэл байхгүй</p>
+                  </div>
+                </div>
+              )}
+
               {/* ── CHAT MODE ── */}
-              {mallMode === 'chat' && (
+              {cyberMallTab === 'mall' && mallMode === 'chat' && (
                 <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-slate-50">
                   {/* Welcome banner */}
                   <div className="shrink-0 mx-5 mt-5 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
@@ -14882,7 +14911,7 @@ export default function App() {
               )}
 
               {/* ── FLOOR MODE — full-screen single storefront ── */}
-              {mallMode === 'floor' && currentStore && (
+              {cyberMallTab === 'mall' && mallMode === 'floor' && currentStore && (
                 <AnimatePresence mode="wait">
                   <motion.div key={`floor-${mallFloor}-${mallStoreIndex}`}
                     initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }}
@@ -14951,7 +14980,7 @@ export default function App() {
               )}
 
               {/* ── STORE MODE ── */}
-              {mallMode === 'store' && currentStore && (
+              {cyberMallTab === 'mall' && mallMode === 'store' && currentStore && (
                 <div className="relative z-10 flex-1 flex flex-col overflow-hidden bg-slate-50">
                   {mallInStorePage === 0 ? (
                       /* Store Intro */
