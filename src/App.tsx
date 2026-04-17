@@ -5486,57 +5486,60 @@ export default function App() {
           <motion.div key="pageselector"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.97 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[500] flex flex-col overflow-hidden bg-black">
+            className="fixed inset-0 z-[500] flex flex-col overflow-hidden bg-white">
 
-            {/* ── Top: Г. Жавхлан banner (flex-1, fills remaining space) ── */}
+            {/* ── Top: Г. Жавхлан banner ── */}
             <motion.button
               initial={{ y: -40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.05, type: 'spring', stiffness: 280, damping: 28 }}
-              className="relative w-full flex-1 flex items-center justify-center overflow-hidden border-b border-white/5"
-              style={{ background: 'linear-gradient(135deg,#0f172a 0%,#1e293b 100%)' }}
+              className="relative w-full flex-1 flex items-center justify-center overflow-hidden border-b border-sky-100"
+              style={{ background: 'linear-gradient(135deg,#0284c7 0%,#38bdf8 100%)' }}
               onClick={() => setShowGJPaywall(true)}>
-              <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, #f59e0b18 0%, transparent 70%)' }} />
+              <div className="absolute inset-0" style={{ background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.12) 0%, transparent 70%)' }} />
               <div className="relative z-10 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-amber-400/30 flex items-center justify-center text-2xl shadow-xl">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-2xl shadow-xl">
                   👨‍💼
                 </div>
                 <div className="text-left">
-                  <p className="text-amber-400/60 text-[9px] font-black tracking-widest uppercase mb-0.5">Personal Page</p>
+                  <p className="text-white/70 text-[9px] font-black tracking-widest uppercase mb-0.5">Personal Page</p>
                   <p className="text-white font-black text-xl leading-none">Г. Жавхлан</p>
                   <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="text-amber-400 text-[9px] font-black">🔒 Төлбөртэй</span>
+                    <span className="text-white/80 text-[9px] font-black">🔒 Төлбөртэй</span>
                   </div>
                 </div>
               </div>
-              <div className="absolute right-5 text-white/15 text-xl">›</div>
+              <div className="absolute right-5 text-white/30 text-xl">›</div>
             </motion.button>
 
             {/* ── 3×4 grid (12 items, aspect-square cells) ── */}
             <div className="grid grid-cols-3 shrink-0">
               {([
-                { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#1e1b4b,#312e81)', glow: '#8b5cf225', onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
-                { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0c1a0c,#14532d)', glow: '#22c55e20', onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
-                { delay: 0.12, icon: '🛎️', sub: 'Service Center', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#2d1657,#4c1d95)', glow: '#a855f720', onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
-                { delay: 0.15, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.18, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.21, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.24, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.27, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.30, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: 'linear-gradient(135deg,#0d0d0d,#181818)', glow: '#ffffff06', onClick: () => {} },
-                { delay: 0.33, icon: '📱', sub: 'AppStore',   label: 'AppStore',   bg: 'linear-gradient(135deg,#001a1a,#0f4c81)', glow: '#0ea5e920', onClick: () => { setShowPageSelector(false); setShowAppStore(true); } },
-                { delay: 0.36, icon: '☰',  sub: 'Menu',       label: 'My Menu',    bg: 'linear-gradient(135deg,#0a0a1a,#1e1e3f)', glow: '#818cf820', onClick: () => { setShowPageSelector(false); setShowMyMenu(true); } },
-                { delay: 0.39, icon: '👤', sub: 'Profile',    label: 'My Profile', bg: 'linear-gradient(135deg,#1a0a2e,#4c1d95)', glow: '#a78bfa20', onClick: () => { setShowPageSelector(false); setCyberMallTab('profile'); setTimeout(() => setShowCyberMall(true), 200); } },
+                { delay: 0.06, icon: '🏬', sub: 'Cyber Mall',     label: 'Цахим\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0284c7,#0ea5e9)', soon: false, onClick: () => { setShowPageSelector(false); setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } },
+                { delay: 0.09, icon: '🏪', sub: 'Marketplace',    label: 'Бусад\nХудалдааны Төв', bg: 'linear-gradient(135deg,#0369a1,#0284c7)', soon: false, onClick: () => { setShowPageSelector(false); setShowOtherMall(true); setOtherMallView('home'); } },
+                { delay: 0.12, icon: '🛎️', sub: 'Service Center', label: 'Үйлчилгээний\nТөв', bg: 'linear-gradient(135deg,#38bdf8,#7dd3fc)', soon: false, onClick: () => { setShowPageSelector(false); setShowServiceCenter(true); setServiceCenterView('home'); } },
+                { delay: 0.15, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.18, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.21, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.24, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.27, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.30, icon: '🕐', sub: 'Soon', label: 'Удахгүй', bg: '#ffffff', soon: true, onClick: () => {} },
+                { delay: 0.33, icon: '📱', sub: 'AppStore',   label: 'AppStore',   bg: 'linear-gradient(135deg,#0ea5e9,#38bdf8)', soon: false, onClick: () => { setShowPageSelector(false); setShowAppStore(true); } },
+                { delay: 0.36, icon: '☰',  sub: 'Menu',       label: 'My Menu',    bg: 'linear-gradient(135deg,#0284c7,#38bdf8)', soon: false, onClick: () => { setShowPageSelector(false); setShowMyMenu(true); } },
+                { delay: 0.39, icon: '👤', sub: 'Profile',    label: 'My Profile', bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)', soon: false, onClick: () => { setShowPageSelector(false); setCyberMallTab('profile'); setTimeout(() => setShowCyberMall(true), 200); } },
               ]).map((item, i) => (
                 <motion.button key={i}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: item.delay, type: 'spring', stiffness: 280, damping: 28 }}
-                  className={cn('relative aspect-square flex flex-col items-center justify-center overflow-hidden border-white/5',
-                    i % 3 !== 2 ? 'border-r' : '', i < 9 ? 'border-b' : '')}
+                  className={cn('relative aspect-square flex flex-col items-center justify-center overflow-hidden',
+                    i % 3 !== 2 ? 'border-r' : '', i < 9 ? 'border-b' : '',
+                    item.soon ? 'border-sky-100' : 'border-sky-200/40')}
                   style={{ background: item.bg }}
                   onClick={item.onClick}>
-                  <div className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 40%, ${item.glow} 0%, transparent 65%)` }} />
                   <div className="relative z-10 flex flex-col items-center gap-1">
-                    <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center text-lg mb-0.5', item.sub === 'Soon' ? 'bg-white/5 border border-white/8' : 'bg-white/10 border border-white/20')}>{item.icon}</div>
-                    <p className={cn('text-[8px] font-black tracking-widest uppercase', item.sub === 'Soon' ? 'text-white/20' : 'text-white/40')}>{item.sub}</p>
-                    <p className={cn('font-black text-xs leading-tight text-center whitespace-pre-line', item.sub === 'Soon' ? 'text-white/25' : 'text-white')}>{item.label}</p>
+                    <div className={cn('w-10 h-10 rounded-2xl flex items-center justify-center text-lg mb-0.5',
+                      item.soon ? 'bg-sky-50 border border-sky-100' : 'bg-white/20 border border-white/30')}>
+                      {item.icon}
+                    </div>
+                    <p className={cn('text-[8px] font-black tracking-widest uppercase', item.soon ? 'text-sky-200' : 'text-white/70')}>{item.sub}</p>
+                    <p className={cn('font-black text-xs leading-tight text-center whitespace-pre-line', item.soon ? 'text-sky-300' : 'text-white')}>{item.label}</p>
                   </div>
                 </motion.button>
               ))}
