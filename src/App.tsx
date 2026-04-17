@@ -5633,6 +5633,58 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* ── AppStore page ── */}
+      <AnimatePresence>
+        {showAppStore && (
+          <motion.div key="appstore"
+            initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', stiffness: 280, damping: 28 }}
+            className="fixed inset-0 z-[500] bg-white flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-4 border-b border-sky-100"
+              style={{ background: 'linear-gradient(135deg,#0284c7,#38bdf8)' }}>
+              <button onClick={() => { setShowAppStore(false); setShowPageSelector(true); }}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                <span className="text-white text-lg">‹</span>
+              </button>
+              <p className="text-white font-black text-base">AppStore</p>
+              <div className="w-9" />
+            </div>
+            {/* App grid */}
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="grid grid-cols-4 gap-5">
+                {([
+                  { id: 'citizens'   as AppTab, label: 'Иргэд',             Icon: Users       , bg: 'linear-gradient(135deg,#0284c7,#38bdf8)' },
+                  { id: 'learn'      as AppTab, label: 'Өөрөөр Сур',        Icon: BookOpen    , bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)' },
+                  { id: 'shop'       as AppTab, label: 'Дэлгүүр',           Icon: ShoppingBag , bg: 'linear-gradient(135deg,#0284c7,#7dd3fc)' },
+                  { id: 'membership' as AppTab, label: 'Get Membership',     Icon: Crown       , bg: 'linear-gradient(135deg,#0369a1,#38bdf8)' },
+                  { id: 'website'    as AppTab, label: 'Website',            Icon: Globe       , bg: 'linear-gradient(135deg,#0ea5e9,#bae6fd)' },
+                  { id: 'battle'     as AppTab, label: 'Ялагч Тодруулах',   Icon: Sword       , bg: 'linear-gradient(135deg,#0284c7,#0ea5e9)' },
+                  { id: 'lucky_draw' as AppTab, label: 'Азтан Тодруулах',   Icon: Trophy      , bg: 'linear-gradient(135deg,#0369a1,#0284c7)' },
+                  { id: 'lottery'    as AppTab, label: 'Сугалаа',            Icon: Ticket      , bg: 'linear-gradient(135deg,#0ea5e9,#38bdf8)' },
+                  { id: 'askify'     as AppTab, label: 'Askify',             Icon: Brain       , bg: 'linear-gradient(135deg,#0284c7,#0369a1)' },
+                  { id: 'birthday'   as AppTab, label: 'Төрсөн Өдөр',       Icon: Cake        , bg: 'linear-gradient(135deg,#38bdf8,#7dd3fc)' },
+                  { id: 'games'      as AppTab, label: 'Games',              Icon: Gamepad2    , bg: 'linear-gradient(135deg,#0369a1,#0ea5e9)' },
+                  { id: 'magic'      as AppTab, label: 'Magic Word',         Icon: Wand2       , bg: 'linear-gradient(135deg,#0284c7,#38bdf8)' },
+                  { id: 'zavgui'     as AppTab, label: 'Завгүй',             Icon: Briefcase   , bg: 'linear-gradient(135deg,#0ea5e9,#0284c7)' },
+                ]).map((app) => (
+                  <motion.button key={app.id}
+                    whileTap={{ scale: 0.88 }}
+                    onClick={() => { setShowAppStore(false); setShowPageSelector(false); setActiveTab(app.id); if (app.id === 'shop') { setCyberMallTab('mall'); setTimeout(() => setShowCyberMall(true), 200); } }}
+                    className="flex flex-col items-center gap-1.5">
+                    <div className="w-16 h-16 rounded-[20px] flex items-center justify-center shadow-md shadow-sky-200/60"
+                      style={{ background: app.bg }}>
+                      <app.Icon size={28} className="text-white" />
+                    </div>
+                    <p className="text-slate-700 text-[10px] font-semibold text-center leading-tight">{app.label}</p>
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Quick Menu (double-tap anywhere) ── */}
       <AnimatePresence>
         {showQuickMenu && (
