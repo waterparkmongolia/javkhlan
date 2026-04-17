@@ -14735,14 +14735,23 @@ export default function App() {
               {/* ── Top Navigation ── */}
               <div className="relative z-10 shrink-0 bg-white border-b border-slate-100 shadow-sm">
                 <div className="flex items-center justify-between px-4 py-2">
-                  <button onClick={e => { e.stopPropagation(); setShowSidebar(true); }}
-                    className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-black transition-all hover:bg-indigo-100">
-                    ☰ Танилцах
-                  </button>
-                  <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setCyberMallTab('mall'); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); setShowPageSelector(true); }}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
-                    Гарах
-                  </button>
+                  {cyberMallTab === 'profile' ? (
+                    <button onClick={e => { e.stopPropagation(); setCyberMallTab('mall'); setShowCyberMall(false); setShowPageSelector(true); }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
+                      ‹ Буцах
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={e => { e.stopPropagation(); setShowSidebar(true); }}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-black transition-all hover:bg-indigo-100">
+                        ☰ Танилцах
+                      </button>
+                      <button onClick={e => { e.stopPropagation(); setShowCyberMall(false); setCyberMallTab('mall'); setMallMode('chat'); setMallFloor(1); setMallStoreIndex(0); setMallShowSales(false); setShowPageSelector(true); }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black transition-all hover:bg-slate-200">
+                        Гарах
+                      </button>
+                    </>
+                  )}
                 </div>
                 {/* Floor indicator dots (only in floor/store mode when mall tab active) */}
                 {mallMode !== 'chat' && (
