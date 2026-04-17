@@ -176,7 +176,7 @@ class ErrorBoundary extends React.Component<any, any> {
   }
 }
 
-const Navbar = ({ onBrandClick, onBrandDoubleClick, onSupportClick, onIntroClick, onMenuClick, appUser, onProfileClick }: { onBrandClick: () => void; onBrandDoubleClick: () => void; onSupportClick: () => void; onIntroClick: () => void; onMenuClick: () => void; appUser: any; onProfileClick: () => void }) => (
+const Navbar = ({ onBrandClick, onBrandDoubleClick, onSupportClick, onMenuClick, onGarakhClick }: { onBrandClick: () => void; onBrandDoubleClick: () => void; onSupportClick: () => void; onMenuClick: () => void; onGarakhClick: () => void }) => (
   <nav className="sticky top-0 z-50 glass border-b border-slate-200/50 px-6 py-4">
     <div className="max-w-5xl mx-auto flex justify-between items-center">
       <div className="flex items-center gap-4">
@@ -192,25 +192,12 @@ const Navbar = ({ onBrandClick, onBrandDoubleClick, onSupportClick, onIntroClick
           <span className="font-display font-bold text-xl tracking-tight">Г. Жавхлан</span>
         </div>
       </div>
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onIntroClick}
-          className="text-sm font-medium text-slate-600 hover:text-brand-600 transition-colors"
-        >
-          Танилцах
-        </button>
-        <button
-          onClick={onProfileClick}
-          className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-100 hover:bg-brand-200 transition-colors shrink-0"
-          title={appUser ? appUser.name : 'Нэвтрэх'}
-        >
-          {appUser ? (
-            <span className="text-brand-700 font-black text-sm">{(appUser.name || appUser.username || '?')[0].toUpperCase()}</span>
-          ) : (
-            <User size={18} className="text-brand-600" />
-          )}
-        </button>
-      </div>
+      <button
+        onClick={onGarakhClick}
+        className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 text-xs font-black hover:bg-slate-200 transition-colors"
+      >
+        Гарах
+      </button>
     </div>
   </nav>
 );
@@ -5749,15 +5736,7 @@ export default function App() {
         onBrandDoubleClick={() => setShowQuickMenu(true)}
         onSupportClick={() => setActiveTab('citizens')}
         onMenuClick={() => setShowSidebar(true)}
-        onIntroClick={() => {
-          if (localStorage.getItem('intro_completed') && userNumber !== null) {
-            setShowWelcomeNotif(true);
-          } else {
-            setShowIntro(true);
-          }
-        }}
-        appUser={appUser}
-        onProfileClick={() => setShowProfileDrawer(true)}
+        onGarakhClick={() => setShowPageSelector(true)}
       />
 
       {/* ── Жавхлантай бол Жаргалтай ── home only */}
